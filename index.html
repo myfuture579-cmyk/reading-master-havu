@@ -1,0 +1,2381 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reading Master - Ứng Dụng Luyện Đọc Tiếng Anh Thông Minh</title>
+    
+    <!-- Meta tags for SEO & Social Sharing (Zalo, Facebook, Messenger) -->
+    <meta name="description" content="Ứng dụng luyện đọc tiếng Anh cho học sinh và giáo viên. Đọc mẫu tự nhiên A1-C1, chấm điểm phát âm động viên màu Xanh/Vàng/Đỏ, quản lý học sinh và giao bài qua link Zalo.">
+    <meta property="og:title" content="Reading Master - Luyện Đọc Tiếng Anh Thông Minh">
+    <meta property="og:description" content="Nhấn vào để luyện đọc bài tập Tiếng Anh với giọng đọc chuẩn và máy chấm điểm tự động!">
+    <meta property="og:type" content="website">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            400: '#818cf8',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81',
+                        },
+                        correct: '#22c55e',
+                        warning: '#eab308',
+                        error: '#ef4444'
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'bounce-subtle': 'bounce 2s infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                    },
+                    keyframes: {
+                        glow: {
+                            '0%': { boxShadow: '0 0 15px rgba(99, 102, 241, 0.4)' },
+                            '100%': { boxShadow: '0 0 30px rgba(99, 102, 241, 0.8)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Chart.js for Progress tracking -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Canvas Confetti for Celebration -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <!-- Mammoth.js for Word (.docx) file extraction -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+
+    <!-- PDF.js for PDF file extraction -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        /* Glassmorphism utility classes */
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .light .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+
+        /* Reading word styling */
+        .word-token {
+            display: inline-block;
+            padding: 4px 6px;
+            margin: 2px 2px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .word-token:hover {
+            transform: translateY(-2px);
+            background: rgba(99, 102, 241, 0.2);
+        }
+
+        /* Active word being read by TTS */
+        .word-token.speaking {
+            background-color: #6366f1 !important;
+            color: #ffffff !important;
+            font-weight: 700;
+            transform: scale(1.15);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.5);
+            z-index: 10;
+        }
+
+        /* Evaluated words color coding */
+        .word-correct {
+            background-color: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+            border-bottom: 2px solid #22c55e;
+            font-weight: 600;
+        }
+        .light .word-correct {
+            background-color: rgba(34, 197, 94, 0.15);
+            color: #15803d;
+        }
+
+        .word-warning {
+            background-color: rgba(234, 179, 8, 0.2);
+            color: #eab308;
+            border-bottom: 2px solid #eab308;
+            font-weight: 600;
+        }
+        .light .word-warning {
+            background-color: rgba(234, 179, 8, 0.18);
+            color: #a16207;
+        }
+
+        .word-error {
+            background-color: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border-bottom: 2px solid #ef4444;
+            text-decoration: line-through;
+        }
+        .light .word-error {
+            background-color: rgba(239, 68, 68, 0.15);
+            color: #b91c1c;
+        }
+
+        /* Pulsing Recording Mic */
+        .mic-recording {
+            animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+        }
+
+        @keyframes pulse-ring {
+            0% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 20px rgba(239, 68, 68, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+            }
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.4);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(99, 102, 241, 0.8);
+        }
+
+        @media print {
+            header, nav, button, .no-print {
+                display: none !important;
+            }
+            body {
+                background: white !important;
+                color: black !important;
+            }
+            .glass-panel {
+                background: white !important;
+                border: 1px solid #ccc !important;
+                box-shadow: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen transition-colors duration-300 antialiased selection:bg-brand-500 selection:text-white">
+
+    <!-- APP WRAPPER -->
+    <div class="min-h-screen flex flex-col">
+
+        <!-- HEADER / NAVIGATION -->
+        <header class="sticky top-0 z-50 border-b border-slate-800 bg-slate-900/80 backdrop-blur-xl">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+                
+                <!-- Logo & Title -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-brand-600 via-indigo-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-brand-500/30">
+                        <i data-lucide="mic-vocal" class="w-7 h-7 text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl sm:text-2xl font-extrabold bg-gradient-to-r from-white via-indigo-200 to-indigo-400 bg-clip-text text-transparent">
+                            Reading Master
+                        </h1>
+                        <p class="text-xs text-indigo-300/80 font-medium">Luyện Đọc Tiếng Anh Chấm Điểm Thông Minh</p>
+                    </div>
+                </div>
+
+                <!-- Navigation Tabs -->
+                <nav class="hidden md:flex items-center space-x-1 bg-slate-800/80 p-1.5 rounded-2xl border border-slate-700/60">
+                    <button onclick="switchTab('student')" id="tab-student" class="nav-tab px-4 py-2 rounded-xl text-sm font-semibold flex items-center space-x-2 transition-all duration-200 bg-brand-600 text-white shadow-md">
+                        <i data-lucide="book-open" class="w-4 h-4"></i>
+                        <span>Luyện Đọc (Học Viên)</span>
+                    </button>
+                    <button onclick="switchTab('teacher')" id="tab-teacher" class="nav-tab px-4 py-2 rounded-xl text-sm font-semibold flex items-center space-x-2 transition-all duration-200 text-slate-400 hover:text-white hover:bg-slate-700/50">
+                        <i data-lucide="file-plus-2" class="w-4 h-4"></i>
+                        <span>Giao Bài (Giáo Viên)</span>
+                    </button>
+                    <button onclick="switchTab('progress')" id="tab-progress" class="nav-tab px-4 py-2 rounded-xl text-sm font-semibold flex items-center space-x-2 transition-all duration-200 text-slate-400 hover:text-white hover:bg-slate-700/50">
+                        <i data-lucide="trophy" class="w-4 h-4"></i>
+                        <span>Tiến Trình & Báo Cáo</span>
+                    </button>
+                    <button onclick="switchTab('guide')" id="tab-guide" class="nav-tab px-4 py-2 rounded-xl text-sm font-semibold flex items-center space-x-2 transition-all duration-200 text-slate-400 hover:text-white hover:bg-slate-700/50">
+                        <i data-lucide="help-circle" class="w-4 h-4"></i>
+                        <span>Hướng Dẫn</span>
+                    </button>
+                </nav>
+
+                <!-- Actions Right (Streak badge & Theme toggle) -->
+                <div class="flex items-center space-x-3">
+                    <div class="hidden sm:flex items-center space-x-2 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 px-3.5 py-1.5 rounded-full text-amber-400 text-sm font-bold shadow-inner">
+                        <i data-lucide="flame" class="w-4 h-4 text-amber-500 animate-bounce-subtle"></i>
+                        <span>Streak: <span id="header-streak-count">0</span> ngày</span>
+                    </div>
+
+                    <button onclick="toggleTheme()" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 transition-all" title="Chuyển chế độ Sáng / Tối">
+                        <i data-lucide="sun" id="theme-icon" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mobile Navigation -->
+            <div class="md:hidden flex border-t border-slate-800 bg-slate-900 px-2 py-2 overflow-x-auto space-x-2">
+                <button onclick="switchTab('student')" id="mob-tab-student" class="flex-1 py-2 px-3 text-xs font-semibold rounded-lg bg-brand-600 text-white flex items-center justify-center space-x-1">
+                    <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
+                    <span>Luyện Đọc</span>
+                </button>
+                <button onclick="switchTab('teacher')" id="mob-tab-teacher" class="flex-1 py-2 px-3 text-xs font-semibold rounded-lg text-slate-400 flex items-center justify-center space-x-1">
+                    <i data-lucide="file-plus-2" class="w-3.5 h-3.5"></i>
+                    <span>Giao Bài</span>
+                </button>
+                <button onclick="switchTab('progress')" id="mob-tab-progress" class="flex-1 py-2 px-3 text-xs font-semibold rounded-lg text-slate-400 flex items-center justify-center space-x-1">
+                    <i data-lucide="trophy" class="w-3.5 h-3.5"></i>
+                    <span>Báo Cáo</span>
+                </button>
+                <button onclick="switchTab('guide')" id="mob-tab-guide" class="flex-1 py-2 px-3 text-xs font-semibold rounded-lg text-slate-400 flex items-center justify-center space-x-1">
+                    <i data-lucide="help-circle" class="w-3.5 h-3.5"></i>
+                    <span>Hướng Dẫn</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+
+            <!-- SHARED ASSIGNMENT WELCOME BANNER (IF OPENED VIA SHARED LINK) -->
+            <div id="shared-assignment-banner" class="hidden bg-gradient-to-r from-indigo-900/90 via-purple-900/80 to-slate-900 border-2 border-indigo-500/50 rounded-3xl p-5 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-glow">
+                <div class="flex items-center space-x-3 text-left">
+                    <div class="w-12 h-12 rounded-2xl bg-indigo-500/30 text-indigo-300 flex items-center justify-center shrink-0 border border-indigo-400/40">
+                        <i data-lucide="mail-check" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                            Bài Tập Được Giao
+                        </span>
+                        <h3 class="text-base font-extrabold text-white mt-0.5" id="banner-assignment-title">
+                            Em đang mở bài tập do Giáo Viên giao!
+                        </h3>
+                        <p class="text-xs text-indigo-200/90">Hãy điền Tên & Lớp của em bên dưới và bấm nút Micro để luyện đọc nhé!</p>
+                    </div>
+                </div>
+                <button onclick="dismissSharedBanner()" class="px-4 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-xs font-bold text-slate-300 shrink-0">
+                    Đã hiểu
+                </button>
+            </div>
+
+            <!-- TAB 1: STUDENT PRACTICE MODE (LUYỆN ĐỌC) -->
+            <section id="section-student" class="tab-content space-y-8">
+                
+                <!-- STUDENT PROFILE BAR (TÊN & LỚP HỌC SINH) -->
+                <div class="glass-panel p-6 rounded-3xl border border-slate-800 shadow-2xl bg-gradient-to-r from-indigo-950/40 via-slate-900/80 to-slate-900/90">
+                    <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center border border-indigo-500/30">
+                                <i data-lucide="user-check" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-base font-bold text-white">Thông Tin Học Sinh Luyện Đọc</h3>
+                                <p class="text-xs text-slate-400">Vui lòng điền tên & lớp để giáo viên ghi nhận tiến trình học tập của em!</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full md:w-auto">
+                            <!-- Student Name Input -->
+                            <div class="relative">
+                                <input type="text" id="student-name-input" onchange="saveStudentProfile()" placeholder="Họ và tên học sinh..." class="w-full sm:w-56 bg-slate-900 border border-slate-700 text-white rounded-xl px-3.5 py-2.5 text-xs font-bold focus:ring-2 focus:ring-brand-500">
+                            </div>
+
+                            <!-- Student Class Input -->
+                            <div class="relative">
+                                <input type="text" id="student-class-input" onchange="saveStudentProfile()" placeholder="Lớp (Ví dụ: 5A1)..." class="w-full sm:w-36 bg-slate-900 border border-slate-700 text-white rounded-xl px-3.5 py-2.5 text-xs font-bold focus:ring-2 focus:ring-brand-500">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TOP SELECTION & CONTROLS BAR -->
+                <div class="glass-panel p-6 rounded-3xl border border-slate-800 shadow-2xl space-y-6">
+                    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                        
+                        <!-- Passage Selector -->
+                        <div class="flex-1 space-y-2">
+                            <label class="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center space-x-2">
+                                <i data-lucide="book-marked" class="w-4 h-4"></i>
+                                <span>Chọn bài đọc luyện tập:</span>
+                            </label>
+                            <div class="relative">
+                                <select id="passage-select" onchange="loadSelectedPassage()" class="w-full bg-slate-900/90 border border-slate-700 text-white rounded-2xl px-4 py-3.5 pr-10 font-medium text-base focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-all appearance-none cursor-pointer">
+                                    <!-- Dynamic options populated by JS -->
+                                </select>
+                                <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-slate-400">
+                                    <i data-lucide="chevron-down" class="w-5 h-5"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SCORING TOLERANCE MODE SELECTOR -->
+                        <div class="space-y-2">
+                            <label class="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center space-x-2">
+                                <i data-lucide="sparkles" class="w-4 h-4"></i>
+                                <span>Chế độ chấm điểm:</span>
+                            </label>
+                            <select id="scoring-tolerance-select" onchange="setScoringTolerance(this.value)" class="bg-slate-900/90 border border-emerald-500/50 text-emerald-300 rounded-2xl px-4 py-3.5 text-xs font-bold focus:ring-2 focus:ring-emerald-500 cursor-pointer">
+                                <option value="easy" selected>🌈 Dễ & Động viên (Nhiều từ xanh - Khuyên dùng)</option>
+                                <option value="standard">⚖️ Tiêu chuẩn (Vừa phải)</option>
+                                <option value="strict">🎯 Chính xác (Nâng cao)</option>
+                            </select>
+                        </div>
+
+                        <!-- Level & Speed Presets Selector -->
+                        <div class="space-y-2">
+                            <label class="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center space-x-2">
+                                <i data-lucide="gauge" class="w-4 h-4"></i>
+                                <span>Tốc độ đọc mẫu:</span>
+                            </label>
+                            <div class="flex items-center space-x-2 bg-slate-900/90 p-1.5 rounded-2xl border border-slate-700">
+                                <button onclick="setSpeedPreset('A1-A2')" id="btn-speed-a1" class="speed-preset-btn px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 bg-brand-600 text-white shadow">
+                                    <span>🐢 A1-A2</span>
+                                    <span class="opacity-75 text-[10px]">(0.8x)</span>
+                                </button>
+                                <button onclick="setSpeedPreset('B1-B2')" id="btn-speed-b1" class="speed-preset-btn px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 text-slate-400 hover:text-white">
+                                    <span>🚶 B1-B2</span>
+                                    <span class="opacity-75 text-[10px]">(1.0x)</span>
+                                </button>
+                                <button onclick="setSpeedPreset('C1')" id="btn-speed-c1" class="speed-preset-btn px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 text-slate-400 hover:text-white">
+                                    <span>⚡ C1</span>
+                                    <span class="opacity-75 text-[10px]">(1.2x)</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Voice Selection Dropdown -->
+                        <div class="space-y-2 min-w-[200px]">
+                            <label class="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center space-x-2">
+                                <i data-lucide="volume-2" class="w-4 h-4"></i>
+                                <span>Giọng đọc mẫu:</span>
+                            </label>
+                            <select id="voice-select" class="w-full bg-slate-900/90 border border-slate-700 text-slate-200 rounded-2xl px-3.5 py-3 text-xs font-medium focus:ring-2 focus:ring-brand-500">
+                                <option value="">Đang tải giọng đọc...</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PASSAGE CARD & SAMPLE PLAYBACK -->
+                <div class="glass-panel rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-2xl space-y-6 relative overflow-hidden">
+                    
+                    <!-- Top Info Header -->
+                    <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-5">
+                        <div>
+                            <div class="flex items-center space-x-3 mb-1">
+                                <span id="current-passage-level-badge" class="px-3 py-1 rounded-full text-xs font-extrabold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                    Trình độ: A1-A2
+                                </span>
+                                <span id="current-passage-topic-badge" class="px-3 py-1 rounded-full text-xs font-medium bg-slate-800 text-slate-300 border border-slate-700">
+                                    Chủ đề: General
+                                </span>
+                            </div>
+                            <h2 id="current-passage-title" class="text-2xl sm:text-3xl font-extrabold text-white">
+                                Tên Bài Đọc Mẫu
+                            </h2>
+                        </div>
+
+                        <!-- Actions (Share Assignment Link + Sample Audio) -->
+                        <div class="flex flex-wrap items-center gap-3">
+                            <!-- SHARE ASSIGNMENT LINK BUTTON FOR TEACHER -->
+                            <button onclick="shareCurrentPassageLink()" class="px-4 py-2.5 rounded-2xl bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/30 text-xs font-bold transition-all flex items-center space-x-2 shadow-sm" title="Tạo link gửi cho học sinh làm bài">
+                                <i data-lucide="share-2" class="w-4 h-4 text-indigo-400"></i>
+                                <span>Giao Link Bài Này (Zalo)</span>
+                            </button>
+
+                            <!-- Sample Audio Playbar -->
+                            <div class="flex items-center space-x-2 bg-slate-900/80 px-3.5 py-2 rounded-2xl border border-slate-700/80">
+                                <span class="text-xs font-bold text-slate-400 uppercase tracking-wide hidden sm:flex items-center space-x-1">
+                                    <i data-lucide="headphones" class="w-3.5 h-3.5 text-indigo-400"></i>
+                                    <span>Đọc Mẫu:</span>
+                                </span>
+
+                                <button onclick="playSampleTTS()" id="btn-play-sample" class="p-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white transition-all shadow-md shadow-brand-600/30 flex items-center space-x-1.5">
+                                    <i data-lucide="play" class="w-4 h-4 fill-current"></i>
+                                    <span class="text-xs font-bold pr-1">Nghe Đọc Mẫu</span>
+                                </button>
+
+                                <button onclick="pauseSampleTTS()" id="btn-pause-sample" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-all hidden">
+                                    <i data-lucide="pause" class="w-4 h-4"></i>
+                                </button>
+
+                                <button onclick="stopSampleTTS()" id="btn-stop-sample" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-all hidden">
+                                    <i data-lucide="square" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Teacher Note Banner -->
+                    <div id="teacher-note-box" class="hidden bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 text-amber-200 text-sm flex items-start space-x-3">
+                        <i data-lucide="info" class="w-5 h-5 text-amber-400 shrink-0 mt-0.5"></i>
+                        <div>
+                            <p class="font-bold text-amber-300">Lời nhắn từ giáo viên:</p>
+                            <p id="teacher-note-text" class="text-amber-200/90 mt-0.5">Hãy chú ý phát âm rõ các âm đuôi và đọc đúng trọng âm câu nhé!</p>
+                        </div>
+                    </div>
+
+                    <!-- PASSAGE READING AREA (Interactive Tokens) -->
+                    <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 min-h-[180px] leading-relaxed text-lg sm:text-xl font-medium tracking-wide">
+                        <div id="passage-text-display" class="leading-loose">
+                            <!-- Populated with clickable word spans -->
+                        </div>
+                    </div>
+
+                    <p class="text-xs text-slate-400 flex items-center space-x-1.5 italic">
+                        <i data-lucide="sparkles" class="w-3.5 h-3.5 text-indigo-400"></i>
+                        <span>Mẹo: Nhấp vào từng từ để nghe phát âm mẫu chuẩn của từ đó.</span>
+                    </p>
+                </div>
+
+                <!-- RECORDING & PRACTICE STATION -->
+                <div class="glass-panel rounded-3xl p-8 border border-slate-800 shadow-2xl text-center space-y-6">
+                    
+                    <div>
+                        <h3 class="text-xl font-bold text-white flex items-center justify-center space-x-2">
+                            <i data-lucide="mic" class="w-6 h-6 text-brand-400"></i>
+                            <span>Phòng Luyện Đọc Của Học Viên</span>
+                        </h3>
+                        <p class="text-sm text-slate-400 mt-1">Bấm nút Micro bên dưới, đọc to rõ ràng đoạn văn trên để máy tính chấm điểm!</p>
+                    </div>
+
+                    <!-- Waveform Visualizer Canvas -->
+                    <div class="relative max-w-md mx-auto h-16 bg-slate-900/90 rounded-2xl border border-slate-800 overflow-hidden flex items-center justify-center">
+                        <canvas id="waveform-canvas" class="w-full h-full"></canvas>
+                        <div id="waveform-placeholder" class="absolute inset-0 flex items-center justify-center text-xs font-medium text-slate-500 space-x-2">
+                            <i data-lucide="radio" class="w-4 h-4 animate-pulse"></i>
+                            <span>Sóng âm micro sẽ hiển thị khi bạn bắt đầu đọc</span>
+                        </div>
+                    </div>
+
+                    <!-- BIG RECORD BUTTON -->
+                    <div class="flex flex-col items-center justify-center space-y-4">
+                        <button onclick="toggleRecording()" id="btn-record" class="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-tr from-brand-600 to-indigo-500 text-white flex flex-col items-center justify-center shadow-2xl shadow-brand-500/40 hover:scale-105 active:scale-95 transition-all duration-300 group relative">
+                            <i data-lucide="mic" id="record-icon" class="w-10 h-10 group-hover:scale-110 transition-transform"></i>
+                            <span id="record-btn-text" class="text-xs font-bold mt-1 uppercase tracking-wider">Bắt đầu đọc</span>
+                        </button>
+
+                        <!-- Live Status Message -->
+                        <div id="recording-status" class="text-sm font-semibold text-slate-400 flex items-center justify-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-slate-600"></span>
+                            <span>Sẵn sàng ghi âm...</span>
+                        </div>
+                    </div>
+
+                    <!-- LIVE SPEECH TRANSCRIPT PREVIEW BOX (VERIFY MIC SPEECH IN REAL-TIME) -->
+                    <div id="live-transcript-box" class="hidden max-w-2xl mx-auto bg-slate-900/90 border border-brand-500/40 rounded-2xl p-4 text-left shadow-lg">
+                        <div class="flex items-center justify-between text-xs font-bold text-brand-400 mb-1">
+                            <span class="flex items-center space-x-1.5">
+                                <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                                <span>Văn bản micro ghi nhận được theo thời gian thực (Google Voice):</span>
+                            </span>
+                            <span class="text-slate-400 text-[10px]" id="live-word-count">0 từ</span>
+                        </div>
+                        <p id="live-transcript-text" class="text-sm text-slate-200 font-medium leading-relaxed italic bg-slate-950/60 p-3 rounded-xl border border-slate-800">
+                            Đang chờ giọng đọc của bạn...
+                        </p>
+                    </div>
+
+                    <!-- Manual Audio/Text Input Fallback for testing -->
+                    <div class="pt-4 border-t border-slate-800/80 max-w-xl mx-auto flex justify-center">
+                        <button onclick="toggleFallbackModal()" class="text-xs text-indigo-400 hover:text-indigo-300 underline font-medium flex items-center space-x-1">
+                            <i data-lucide="keyboard" class="w-3.5 h-3.5"></i>
+                            <span>Thử nghiệm bằng văn bản đọc thủ công nếu mic yếu</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- EVALUATION & SCORE RESULTS SECTION -->
+                <div id="results-section" class="hidden glass-panel rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-2xl space-y-8 animate-glow">
+                    
+                    <!-- Header & Score Badges -->
+                    <div class="text-center space-y-4">
+                        <div class="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-indigo-300 text-xs font-bold uppercase tracking-widest">
+                            <i data-lucide="award" class="w-4 h-4 text-amber-400"></i>
+                            <span>Kết Quả Đánh Giá & Chấm Điểm</span>
+                        </div>
+
+                        <!-- Student Info Tag on Certificate -->
+                        <div id="results-student-tag" class="text-sm font-extrabold text-indigo-300">
+                            Học sinh: Nguyễn Văn An - Lớp: 5A1
+                        </div>
+
+                        <!-- Score Gauge & Stats -->
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-3xl mx-auto">
+                            <!-- Accuracy Percentage Card -->
+                            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center shadow-lg relative overflow-hidden">
+                                <div class="text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-indigo-400" id="score-percentage">
+                                    0%
+                                </div>
+                                <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mt-2">
+                                    Tỉ lệ đọc đúng (%)
+                                </div>
+                            </div>
+
+                            <!-- WPM Reading Speed Card -->
+                            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center shadow-lg">
+                                <div class="text-4xl sm:text-5xl font-extrabold text-indigo-400" id="score-wpm">
+                                    0
+                                </div>
+                                <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mt-2">
+                                    Tốc độ (Từ / Phút)
+                                </div>
+                            </div>
+
+                            <!-- Word Rating Counts -->
+                            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 flex flex-col justify-center space-y-2 text-left">
+                                <div class="flex items-center justify-between text-xs font-bold">
+                                    <span class="text-emerald-400 flex items-center space-x-1">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                                        <span>Đúng chuẩn:</span>
+                                    </span>
+                                    <span id="count-correct" class="text-white">0 từ</span>
+                                </div>
+                                <div class="flex items-center justify-between text-xs font-bold">
+                                    <span class="text-amber-400 flex items-center space-x-1">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                                        <span>Gần đúng / Chú ý:</span>
+                                    </span>
+                                    <span id="count-warning" class="text-white">0 từ</span>
+                                </div>
+                                <div class="flex items-center justify-between text-xs font-bold">
+                                    <span class="text-rose-400 flex items-center space-x-1">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                                        <span>Bỏ sót / Sai:</span>
+                                    </span>
+                                    <span id="count-error" class="text-white">0 từ</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- EVALUATED PASSAGE TEXT WITH COLOR HIGHLIGHTS -->
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <h4 class="text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center space-x-2">
+                                <i data-lucide="highlighter" class="w-4 h-4 text-brand-400"></i>
+                                <span>Đoạn văn sau khi được chấm điểm:</span>
+                            </h4>
+                            <div class="flex items-center space-x-4 text-xs font-semibold">
+                                <span class="flex items-center space-x-1 text-emerald-400"><span class="w-3 h-3 rounded bg-emerald-500/30 border border-emerald-500"></span><span>Đúng</span></span>
+                                <span class="flex items-center space-x-1 text-amber-400"><span class="w-3 h-3 rounded bg-amber-500/30 border border-amber-500"></span><span>Gần đúng</span></span>
+                                <span class="flex items-center space-x-1 text-rose-400"><span class="w-3 h-3 rounded bg-rose-500/30 border border-rose-500"></span><span>Bỏ sót / Sai</span></span>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 min-h-[160px] leading-loose text-lg sm:text-xl font-medium" id="evaluated-text-container">
+                            <!-- Color highlighted word tokens will be generated here -->
+                        </div>
+                    </div>
+
+                    <!-- LISTEN TO STUDENT'S RECORDED VOICE PLAYBACK -->
+                    <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div class="flex items-center space-x-3">
+                            <div class="p-3 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+                                <i data-lucide="music" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <h5 class="text-sm font-bold text-white">Nghe lại bản ghi âm giọng đọc của em</h5>
+                                <p class="text-xs text-slate-400">Em hãy so sánh giọng đọc của mình với giọng đọc mẫu chuẩn nhé!</p>
+                            </div>
+                        </div>
+                        <audio id="student-audio-playback" controls class="w-full sm:w-auto min-w-[280px] h-10 rounded-xl bg-slate-800"></audio>
+                    </div>
+
+                    <!-- MOTIVATIONAL PRAISE CARD & SHARE RESULT ACTION -->
+                    <div id="praise-card" class="rounded-3xl p-6 border flex flex-col lg:flex-row items-center justify-between gap-6 transition-all">
+                        <div class="flex items-center space-x-4">
+                            <div id="praise-avatar" class="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shadow-lg shrink-0">
+                                🌟
+                            </div>
+                            <div>
+                                <div id="praise-stars" class="flex items-center space-x-1 mb-1">
+                                    <!-- Dynamic star icons -->
+                                </div>
+                                <h4 id="praise-title" class="text-xl font-extrabold text-white">Tuyệt vời!</h4>
+                                <p id="praise-message" class="text-sm text-slate-300 mt-0.5">Em đã hoàn thành xuất sắc bài đọc!</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex flex-wrap items-center gap-3 shrink-0">
+                            <!-- SHARE RESULT BUTTON FOR STUDENT -->
+                            <button onclick="shareResultToTeacher()" class="px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-xl shadow-emerald-600/30 transition-all flex items-center space-x-2">
+                                <i data-lucide="send" class="w-4 h-4"></i>
+                                <span>Gửi Kết Quả Cho Thầy/Cô (Zalo)</span>
+                            </button>
+
+                            <button onclick="resetPractice()" class="px-5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-sm transition-all flex items-center space-x-2">
+                                <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                                <span>Thử Luyện Lại</span>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+
+            </section>
+
+            <!-- TAB 2: TEACHER CONTENT MANAGER (GIÁO VIÊN GIAO BÀI) -->
+            <section id="section-teacher" class="tab-content hidden space-y-8">
+                
+                <div class="glass-panel rounded-3xl p-8 border border-slate-800 shadow-2xl space-y-6">
+                    <div>
+                        <h2 class="text-2xl font-extrabold text-white flex items-center space-x-3">
+                            <div class="w-10 h-10 rounded-xl bg-indigo-600/30 text-indigo-400 flex items-center justify-center border border-indigo-500/30">
+                                <i data-lucide="file-text" class="w-6 h-6"></i>
+                            </div>
+                            <span>Tạo & Giao Bài Đọc Cho Học Sinh</span>
+                        </h2>
+                        <p class="text-sm text-slate-400 mt-1">
+                            Giáo viên có thể dán nội dung văn bản trực tiếp hoặc tải file bài đọc (.txt, .docx, .pdf). Sau khi lưu, thầy cô có thể bấm nút **"Lấy Link Giao Bài"** để gửi link trực tiếp qua nhóm Zalo của lớp!
+                        </p>
+                    </div>
+
+                    <form id="teacher-form" onsubmit="handleSavePassage(event)" class="space-y-6">
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <!-- Title Input -->
+                            <div class="space-y-2 md:col-span-2">
+                                <label class="text-xs font-bold uppercase tracking-wider text-indigo-400">Tiêu đề bài đọc (*):</label>
+                                <input type="text" id="input-title" required placeholder="Ví dụ: Unit 1 - My Amazing Family" class="w-full bg-slate-900/90 border border-slate-700 text-white rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-brand-500">
+                            </div>
+
+                            <!-- Level Dropdown -->
+                            <div class="space-y-2">
+                                <label class="text-xs font-bold uppercase tracking-wider text-indigo-400">Khung trình độ (CEFR):</label>
+                                <select id="input-level" class="w-full bg-slate-900/90 border border-slate-700 text-white rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-brand-500">
+                                    <option value="A1-A2">🐢 A1-A2 (Cơ bản - Tốc độ đọc chậm)</option>
+                                    <option value="B1-B2" selected>🚶 B1-B2 (Trung cấp - Tốc độ tiêu chuẩn)</option>
+                                    <option value="C1">⚡ C1 (Nâng cao - Tốc độ lưu loát)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- FILE UPLOAD DROPZONE -->
+                        <div class="space-y-2">
+                            <label class="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center justify-between">
+                                <span>Tải file bài đọc (Tùy chọn):</span>
+                                <span class="text-slate-500 text-[11px] uppercase font-normal">Hỗ trợ .TXT, .MD, .DOCX, .PDF</span>
+                            </label>
+                            
+                            <div id="dropzone" onclick="document.getElementById('file-input').click()" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleFileDrop(event)" class="border-2 border-dashed border-slate-700 hover:border-brand-500 rounded-2xl p-6 text-center cursor-pointer transition-all bg-slate-900/40 hover:bg-slate-900/80 group">
+                                <input type="file" id="file-input" accept=".txt,.md,.docx,.pdf" onchange="handleFileSelect(event)" class="hidden">
+                                <div class="w-12 h-12 rounded-full bg-indigo-500/10 group-hover:bg-brand-500/20 text-indigo-400 group-hover:text-brand-400 flex items-center justify-center mx-auto mb-2 transition-all">
+                                    <i data-lucide="upload-cloud" class="w-6 h-6"></i>
+                                </div>
+                                <p class="text-sm font-semibold text-slate-300">Nhấp vào đây hoặc kéo thả file bài đọc vào đây</p>
+                                <p id="file-upload-status" class="text-xs text-slate-500 mt-1">Đã sẵn sàng tải văn bản từ file...</p>
+                            </div>
+                        </div>
+
+                        <!-- Content Textarea -->
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between">
+                                <label class="text-xs font-bold uppercase tracking-wider text-indigo-400">Nội dung bài đọc tiếng Anh (*):</label>
+                                <span id="word-count-badge" class="text-xs font-semibold text-slate-400">0 từ</span>
+                            </div>
+                            <textarea id="input-content" required rows="7" placeholder="Dán nội dung tiếng Anh cần giao cho học sinh tại đây..." class="w-full bg-slate-900/90 border border-slate-700 text-white rounded-2xl p-4 text-base leading-relaxed focus:ring-2 focus:ring-brand-500 font-medium"></textarea>
+                        </div>
+
+                        <!-- Teacher Note / Guidance -->
+                        <div class="space-y-2">
+                            <label class="text-xs font-bold uppercase tracking-wider text-indigo-400">Ghi chú / Hướng dẫn của giáo viên dành cho học sinh (Tùy chọn):</label>
+                            <input type="text" id="input-notes" placeholder="Ví dụ: Chú ý phát âm đúng các từ chứa âm /θ/ và đọc đúng nối âm nhé!" class="w-full bg-slate-900/90 border border-slate-700 text-white rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-brand-500">
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="flex justify-end space-x-4 pt-2">
+                            <button type="button" onclick="resetTeacherForm()" class="px-6 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm">
+                                Nhập lại
+                            </button>
+                            <button type="submit" class="px-8 py-3 rounded-2xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-bold text-sm shadow-lg shadow-brand-500/30 flex items-center space-x-2">
+                                <i data-lucide="check-circle" class="w-5 h-5"></i>
+                                <span>Lưu & Giao Bài Đọc Này</span>
+                            </button>
+                        </div>
+
+                    </form>
+                </div>
+
+                <!-- PASSAGE LIBRARY MANAGER -->
+                <div class="glass-panel rounded-3xl p-8 border border-slate-800 shadow-2xl space-y-6">
+                    <h3 class="text-xl font-bold text-white flex items-center space-x-2">
+                        <i data-lucide="folder-kanban" class="w-6 h-6 text-brand-400"></i>
+                        <span>Danh Sách Bài Đọc Đã Lưu & Lấy Link Giao Bài</span>
+                    </h3>
+
+                    <div id="passages-list-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Dynamic passage cards -->
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- TAB 3: PROGRESS & ANALYTICS (TIẾN TRÌNH & THỐNG KÊ KẾT QUẢ HỌC SINH) -->
+            <section id="section-progress" class="tab-content hidden space-y-8">
+                
+                <!-- TOP METRICS SUMMARY -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="glass-panel p-6 rounded-3xl border border-slate-800 flex items-center space-x-4">
+                        <div class="w-14 h-14 rounded-2xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center border border-indigo-500/30">
+                            <i data-lucide="repeat" class="w-7 h-7"></i>
+                        </div>
+                        <div>
+                            <div class="text-2xl font-extrabold text-white" id="stat-total-sessions">0</div>
+                            <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tổng lượt luyện đọc</div>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel p-6 rounded-3xl border border-slate-800 flex items-center space-x-4">
+                        <div class="w-14 h-14 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
+                            <i data-lucide="target" class="w-7 h-7"></i>
+                        </div>
+                        <div>
+                            <div class="text-2xl font-extrabold text-emerald-400" id="stat-avg-accuracy">0%</div>
+                            <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tỉ lệ đúng trung bình</div>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel p-6 rounded-3xl border border-slate-800 flex items-center space-x-4">
+                        <div class="w-14 h-14 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/30">
+                            <i data-lucide="flame" class="w-7 h-7"></i>
+                        </div>
+                        <div>
+                            <div class="text-2xl font-extrabold text-amber-400" id="stat-streak">0 ngày</div>
+                            <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Chuỗi luyện đọc liên tục</div>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel p-6 rounded-3xl border border-slate-800 flex items-center space-x-4">
+                        <div class="w-14 h-14 rounded-2xl bg-purple-500/20 text-purple-400 flex items-center justify-center border border-purple-500/30">
+                            <i data-lucide="users" class="w-7 h-7"></i>
+                        </div>
+                        <div>
+                            <div class="text-2xl font-extrabold text-purple-400" id="stat-total-students">0</div>
+                            <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Số học sinh đã luyện</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PROGRESS CHART & BADGES -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    
+                    <!-- Chart Section -->
+                    <div class="lg:col-span-2 glass-panel p-6 rounded-3xl border border-slate-800 space-y-4">
+                        <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+                            <i data-lucide="line-chart" class="w-5 h-5 text-brand-400"></i>
+                            <span>Biểu Đồ Tiến Bộ Theo Thời Gian</span>
+                        </h3>
+                        <div class="h-64 sm:h-80 relative">
+                            <canvas id="progress-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Badges Grid -->
+                    <div class="glass-panel p-6 rounded-3xl border border-slate-800 space-y-4">
+                        <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+                            <i data-lucide="sparkles" class="w-5 h-5 text-amber-400"></i>
+                            <span>Bộ Huy Hiệu Đạt Được</span>
+                        </h3>
+                        <div id="badges-container" class="space-y-3">
+                            <!-- Dynamic Badges list -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RECENT ATTEMPTS TABLE (WITH TEACHER FILTERS BY STUDENT & CLASS) -->
+                <div class="glass-panel p-6 sm:p-8 rounded-3xl border border-slate-800 space-y-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+                                <i data-lucide="history" class="w-5 h-5 text-indigo-400"></i>
+                                <span>Báo Cáo Lịch Sử Luyện Đọc Của Học Sinh</span>
+                            </h3>
+                            <p class="text-xs text-slate-400 mt-0.5">Giáo viên có thể lọc kết quả theo tên hoặc lớp của học sinh</p>
+                        </div>
+
+                        <div class="flex items-center space-x-3 no-print">
+                            <button onclick="window.print()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center space-x-1.5 shadow">
+                                <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+                                <span>In Báo Cáo / Xuất PDF</span>
+                            </button>
+                            <button onclick="clearHistory()" class="text-xs text-rose-400 hover:text-rose-300 font-semibold flex items-center space-x-1">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                <span>Xóa lịch sử</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- SEARCH FILTERS FOR TEACHER -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-900/80 p-4 rounded-2xl border border-slate-800 no-print">
+                        <div>
+                            <label class="text-[11px] font-bold uppercase text-slate-400">Lọc theo Họ và Tên:</label>
+                            <input type="text" id="filter-name" onkeyup="renderHistoryTable()" placeholder="Nhập tên học sinh..." class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-3 py-2 text-xs font-medium focus:ring-2 focus:ring-brand-500">
+                        </div>
+
+                        <div>
+                            <label class="text-[11px] font-bold uppercase text-slate-400">Lọc theo Lớp:</label>
+                            <input type="text" id="filter-class" onkeyup="renderHistoryTable()" placeholder="Nhập lớp (Ví dụ: 5A1)..." class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-3 py-2 text-xs font-medium focus:ring-2 focus:ring-brand-500">
+                        </div>
+
+                        <div>
+                            <label class="text-[11px] font-bold uppercase text-slate-400">Lọc theo Trình độ:</label>
+                            <select id="filter-level" onchange="renderHistoryTable()" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-3 py-2 text-xs font-medium focus:ring-2 focus:ring-brand-500">
+                                <option value="">Tất cả trình độ</option>
+                                <option value="A1-A2">A1-A2</option>
+                                <option value="B1-B2">B1-B2</option>
+                                <option value="C1">C1</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- TABLE -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-slate-300">
+                            <thead class="bg-slate-900/90 text-xs font-bold uppercase text-slate-400 border-b border-slate-800">
+                                <tr>
+                                    <th class="py-3.5 px-4">Thời gian</th>
+                                    <th class="py-3.5 px-4">Họ và Tên Học Sinh</th>
+                                    <th class="py-3.5 px-4">Lớp</th>
+                                    <th class="py-3.5 px-4">Bài đọc</th>
+                                    <th class="py-3.5 px-4">Trình độ</th>
+                                    <th class="py-3.5 px-4">Điểm số (%)</th>
+                                    <th class="py-3.5 px-4">Tốc độ (WPM)</th>
+                                    <th class="py-3.5 px-4">Đánh giá</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-table-body" class="divide-y divide-slate-800/60 font-medium">
+                                <!-- Dynamic history rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- TAB 4: USER GUIDE (HƯỚNG DẪN SỬ DỤNG) -->
+            <section id="section-guide" class="tab-content hidden space-y-8 max-w-4xl mx-auto">
+                <div class="glass-panel rounded-3xl p-8 border border-slate-800 shadow-2xl space-y-6">
+                    <h2 class="text-2xl font-extrabold text-white flex items-center space-x-3">
+                        <i data-lucide="book-open-check" class="w-7 h-7 text-brand-400"></i>
+                        <span>Hướng Dẫn Sử Dụng & Giao Bài Qua Link Vercel</span>
+                    </h2>
+
+                    <div class="space-y-6 text-slate-300 leading-relaxed text-sm">
+                        <!-- Step 1 -->
+                        <div class="flex items-start space-x-4">
+                            <div class="w-8 h-8 rounded-xl bg-brand-600 text-white font-extrabold flex items-center justify-center shrink-0">1</div>
+                            <div>
+                                <h4 class="font-bold text-white text-base">Giáo Viên Giao Bài & Tạo Link Zalo</h4>
+                                <p class="mt-1">Vào mục <strong>"Giao Bài (Giáo Viên)"</strong>, dán nội dung bài đọc hoặc tải file Word/PDF. Sau khi bấm <strong>Lưu & Giao Bài</strong>, thầy cô chỉ cần bấm nút <strong>"Giao Link Bài Này (Zalo)"</strong> để sao chép đường link gửi vào nhóm lớp. Học sinh bấm vào link sẽ mở đúng bài tập ngay lập tức!</p>
+                            </div>
+                        </div>
+
+                        <!-- Step 2 -->
+                        <div class="flex items-start space-x-4">
+                            <div class="w-8 h-8 rounded-xl bg-indigo-600 text-white font-extrabold flex items-center justify-center shrink-0">2</div>
+                            <div>
+                                <h4 class="font-bold text-white text-base">Học Sinh Luyện Đọc & Chấm Điểm Động Viên</h4>
+                                <p class="mt-1">Học sinh điền Tên & Lớp, bấm nút <strong>"Nghe Đọc Mẫu"</strong> để nghe phát âm chuẩn bản xứ, sau đó bấm nút <strong>Micro (Bắt đầu đọc)</strong>. Hệ thống hiển thị văn bản thời gian thực và chấm điểm màu Xanh/Vàng/Đỏ động viên khích lệ.</p>
+                            </div>
+                        </div>
+
+                        <!-- Step 3 -->
+                        <div class="flex items-start space-x-4">
+                            <div class="w-8 h-8 rounded-xl bg-emerald-600 text-white font-extrabold flex items-center justify-center shrink-0">3</div>
+                            <div>
+                                <h4 class="font-bold text-white text-base">Nộp Kết Quả Cho Giáo Viên</h4>
+                                <p class="mt-1">Sau khi hoàn thành bài đọc, học sinh bấm nút <strong>"Gửi Kết Quả Cho Thầy/Cô (Zalo)"</strong> để sao chép báo cáo kết quả gồm Tên, Lớp, Điểm % và Tốc độ WPM gửi lại cho giáo viên.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- FOOTER -->
+        <footer class="border-t border-slate-800/80 bg-slate-950 py-6 text-center text-xs text-slate-500">
+            <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <p>© 2026 Reading Master - Ứng Dụng Luyện Đọc Tiếng Anh Chấm Điểm Thông Minh.</p>
+                <p class="text-indigo-400/80 font-medium">Hỗ trợ giáo viên & học sinh luyện phát âm tự tin và hào hứng.</p>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- TOAST NOTIFICATION POPUP -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 transform transition-all duration-300 translate-y-20 opacity-0 pointer-events-none max-w-md bg-slate-900 border border-indigo-500/50 text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center space-x-3">
+        <div class="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
+            <i data-lucide="check" class="w-5 h-5"></i>
+        </div>
+        <p id="toast-message" class="text-xs font-semibold leading-relaxed">Thông báo</p>
+    </div>
+
+    <!-- MODAL: FALLBACK TEXT INPUT (For mic testing) -->
+    <div id="fallback-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+                    <i data-lucide="keyboard" class="w-5 h-5 text-brand-400"></i>
+                    <span>Nhập văn bản đọc (Chế độ thử nghiệm)</span>
+                </h3>
+                <button onclick="toggleFallbackModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <p class="text-xs text-slate-400">
+                Nếu mic bị mờ tiếng hoặc muốn thử nghiệm nhanh thuật toán chấm điểm động viên, bạn có thể dán đoạn văn vừa đọc vào đây:
+            </p>
+            <textarea id="fallback-transcript-input" rows="4" placeholder="Dán văn bản giọng đọc thu được tại đây..." class="w-full bg-slate-950 border border-slate-800 rounded-2xl p-3 text-sm text-white focus:ring-2 focus:ring-brand-500"></textarea>
+            <div class="flex justify-end space-x-3">
+                <button onclick="toggleFallbackModal()" class="px-4 py-2 rounded-xl bg-slate-800 text-xs font-bold text-slate-300">Hủy</button>
+                <button onclick="submitFallbackTranscript()" class="px-5 py-2 rounded-xl bg-brand-600 text-xs font-bold text-white">Chấm Điểm Ngay</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP JAVASCRIPT CODE -->
+    <script>
+        /* ==========================================================================
+           1. INITIAL STATE & PRE-LOADED CURATED PASSAGES
+           ========================================================================== */
+        const DEFAULT_PASSAGES = [
+            {
+                id: 'p-1',
+                title: 'My Happy Family (Gia đình hạnh phúc của em)',
+                level: 'A1-A2',
+                topic: 'Family & Home',
+                speed: 0.8,
+                notes: 'Chú ý phát âm rõ các từ chỉ thành viên gia đình và các động từ nguyên mẫu!',
+                content: `My name is Alex and I am ten years old. I live with my parents and my younger sister in a small house near the park. My father is a doctor who helps sick people, and my mother is a high school teacher. On weekends, we love to ride our bicycles together in the park and eat delicious ice cream.`
+            },
+            {
+                id: 'p-2',
+                title: 'The Secret Life of Bees (Cuộc sống kỳ diệu của loài ong)',
+                level: 'B1-B2',
+                topic: 'Nature & Science',
+                speed: 1.0,
+                notes: 'Tốc độ đọc tiêu chuẩn. Đọc ngắt nghỉ hợp lý ở các dấu phẩy và dấu chấm câu.',
+                content: `Honeybees are extraordinary insects that play a vital role in our ecosystem. They travel thousands of miles every season to collect nectar from flowers and transform it into sweet honey inside their hives. Furthermore, bees pollinate crops, allowing fruits and vegetables to grow. Protecting bees is essential for maintaining biodiversity on Earth.`
+            },
+            {
+                id: 'p-3',
+                title: 'Artificial Intelligence in Education (Trí tuệ nhân tạo trong giáo dục)',
+                level: 'C1',
+                topic: 'Technology & Future',
+                speed: 1.2,
+                notes: 'Tốc độ đọc lưu loát, nâng cao. Chú ý từ vựng chuyên ngành và ngữ điệu câu phức.',
+                content: `Artificial intelligence is rapidly reshaping the landscape of modern education. Intelligent tutoring systems now analyze individual learning patterns to provide personalized feedback, enabling students to master complex concepts at their own pace. However, integrating technology into classrooms must be balanced with human empathy, critical thinking, and ethical consideration.`
+            }
+        ];
+
+        let state = {
+            passages: [],
+            currentPassageId: 'p-1',
+            currentSpeed: 0.8,
+            scoringTolerance: 'easy',
+            selectedVoice: null,
+            isTTSPlaying: false,
+            isRecording: false,
+            micStream: null,
+            audioContext: null,
+            analyser: null,
+            recognition: null,
+            recordedAudioChunks: [],
+            lastRecordedAudioBlob: null,
+            accumulatedTranscript: '',
+            studentName: '',
+            studentClass: '',
+            history: [],
+            streak: 0,
+            badges: []
+        };
+
+        /* ==========================================================================
+           2. DOM READY INITIALIZATION
+           ========================================================================== */
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            loadStateFromStorage();
+            initVoices();
+            
+            // Check if student opened via teacher's shared link
+            checkForSharedAssignment();
+
+            loadSelectedPassage();
+            renderTeacherPassageList();
+            updateProgressStats();
+
+            const contentTextarea = document.getElementById('input-content');
+            if (contentTextarea) {
+                contentTextarea.addEventListener('input', (e) => {
+                    const words = e.target.value.trim().split(/\s+/).filter(w => w.length > 0);
+                    document.getElementById('word-count-badge').textContent = `${words.length} từ`;
+                });
+            }
+        });
+
+        /* ==========================================================================
+           3. LOCALSTORAGE & STUDENT PROFILE
+           ========================================================================== */
+        function loadStateFromStorage() {
+            const savedPassages = localStorage.getItem('rm_passages');
+            if (savedPassages) {
+                try {
+                    state.passages = JSON.parse(savedPassages);
+                } catch(e) {
+                    state.passages = DEFAULT_PASSAGES;
+                }
+            } else {
+                state.passages = DEFAULT_PASSAGES;
+                savePassagesToStorage();
+            }
+
+            const savedHistory = localStorage.getItem('rm_history');
+            if (savedHistory) {
+                try {
+                    state.history = JSON.parse(savedHistory);
+                } catch(e) {
+                    state.history = [];
+                }
+            }
+
+            const savedStreak = localStorage.getItem('rm_streak');
+            state.streak = savedStreak ? parseInt(savedStreak, 10) : 0;
+            document.getElementById('header-streak-count').textContent = state.streak;
+
+            state.studentName = localStorage.getItem('rm_student_name') || '';
+            state.studentClass = localStorage.getItem('rm_student_class') || '';
+
+            const nameInput = document.getElementById('student-name-input');
+            const classInput = document.getElementById('student-class-input');
+            if (nameInput) nameInput.value = state.studentName;
+            if (classInput) classInput.value = state.studentClass;
+
+            populatePassageSelectDropdown();
+        }
+
+        function saveStudentProfile() {
+            const nameInput = document.getElementById('student-name-input');
+            const classInput = document.getElementById('student-class-input');
+
+            if (nameInput) state.studentName = nameInput.value.trim();
+            if (classInput) state.studentClass = classInput.value.trim();
+
+            localStorage.setItem('rm_student_name', state.studentName);
+            localStorage.setItem('rm_student_class', state.studentClass);
+        }
+
+        function savePassagesToStorage() {
+            localStorage.setItem('rm_passages', JSON.stringify(state.passages));
+            populatePassageSelectDropdown();
+            renderTeacherPassageList();
+        }
+
+        function saveHistoryToStorage() {
+            localStorage.setItem('rm_history', JSON.stringify(state.history));
+            localStorage.setItem('rm_streak', state.streak.toString());
+            document.getElementById('header-streak-count').textContent = state.streak;
+            updateProgressStats();
+        }
+
+        function populatePassageSelectDropdown() {
+            const select = document.getElementById('passage-select');
+            if (!select) return;
+
+            select.innerHTML = '';
+            state.passages.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = `[${p.level}] ${p.title} (${countWords(p.content)} từ)`;
+                select.appendChild(opt);
+            });
+
+            select.value = state.currentPassageId;
+        }
+
+        function setScoringTolerance(value) {
+            state.scoringTolerance = value;
+        }
+
+        /* ==========================================================================
+           4. NAVIGATION & TAB SWITCHING
+           ========================================================================== */
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(sec => sec.classList.add('hidden'));
+
+            const targetSection = document.getElementById(`section-${tabId}`);
+            if (targetSection) targetSection.classList.remove('hidden');
+
+            const navTabs = ['student', 'teacher', 'progress', 'guide'];
+            navTabs.forEach(id => {
+                const btn = document.getElementById(`tab-${id}`);
+                const mobBtn = document.getElementById(`mob-tab-${id}`);
+
+                if (id === tabId) {
+                    if (btn) btn.className = "nav-tab px-4 py-2 rounded-xl text-sm font-semibold flex items-center space-x-2 transition-all duration-200 bg-brand-600 text-white shadow-md";
+                    if (mobBtn) mobBtn.className = "flex-1 py-2 px-3 text-xs font-semibold rounded-lg bg-brand-600 text-white flex items-center justify-center space-x-1";
+                } else {
+                    if (btn) btn.className = "nav-tab px-4 py-2 rounded-xl text-sm font-semibold flex items-center space-x-2 transition-all duration-200 text-slate-400 hover:text-white hover:bg-slate-700/50";
+                    if (mobBtn) mobBtn.className = "flex-1 py-2 px-3 text-xs font-semibold rounded-lg text-slate-400 flex items-center justify-center space-x-1";
+                }
+            });
+
+            if (tabId === 'progress') {
+                renderProgressChart();
+            }
+        }
+
+        /* ==========================================================================
+           5. SHARED ASSIGNMENT LINK ENGINE (VERCEL / ZALO INTEGRATION)
+           ========================================================================== */
+        function shareCurrentPassageLink() {
+            sharePassageLink(state.currentPassageId);
+        }
+
+        function sharePassageLink(passageId) {
+            const p = state.passages.find(item => item.id === passageId) || getCurrentPassage();
+            if (!p) return;
+
+            const payload = {
+                title: p.title,
+                level: p.level,
+                topic: p.topic || 'General',
+                notes: p.notes || '',
+                content: p.content
+            };
+
+            const jsonStr = JSON.stringify(payload);
+            const b64 = btoa(unescape(encodeURIComponent(jsonStr)));
+            
+            // Generate clean URL with hash
+            const baseUrl = window.location.origin + window.location.pathname;
+            const shareUrl = `${baseUrl}#task=${b64}`;
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(shareUrl).then(() => {
+                    showToast(`Đã sao chép link giao bài "${p.title}"! Thầy/cô chỉ cần dán (Paste) vào Zalo lớp để học sinh bấm vào luyện đọc ngay.`);
+                }).catch(() => {
+                    prompt('Hãy sao chép đường link giao bài sau để gửi cho học sinh:', shareUrl);
+                });
+            } else {
+                prompt('Hãy sao chép đường link giao bài sau để gửi cho học sinh:', shareUrl);
+            }
+        }
+
+        function checkForSharedAssignment() {
+            const hash = window.location.hash;
+            if (hash && hash.includes('task=')) {
+                try {
+                    const b64 = hash.split('task=')[1].split('&')[0];
+                    const jsonStr = decodeURIComponent(escape(atob(b64)));
+                    const payload = JSON.parse(jsonStr);
+
+                    if (payload && payload.title && payload.content) {
+                        const assignedPassage = {
+                            id: 'shared-' + Date.now(),
+                            title: payload.title,
+                            level: payload.level || 'B1-B2',
+                            topic: payload.topic || 'Bài Tập Giáo Viên Giao',
+                            notes: payload.notes || 'Bài tập được giáo viên giao trực tiếp qua link!',
+                            content: payload.content,
+                            speed: payload.level === 'A1-A2' ? 0.8 : (payload.level === 'C1' ? 1.2 : 1.0)
+                        };
+
+                        // Check if already in list
+                        const existing = state.passages.find(p => p.title === assignedPassage.title && p.content === assignedPassage.content);
+                        if (!existing) {
+                            state.passages.unshift(assignedPassage);
+                            state.currentPassageId = assignedPassage.id;
+                            savePassagesToStorage();
+                        } else {
+                            state.currentPassageId = existing.id;
+                        }
+
+                        // Show shared banner
+                        const banner = document.getElementById('shared-assignment-banner');
+                        const bannerTitle = document.getElementById('banner-assignment-title');
+                        if (banner && bannerTitle) {
+                            bannerTitle.textContent = `Em đang mở bài đọc: "${assignedPassage.title}"`;
+                            banner.classList.remove('hidden');
+                        }
+
+                        switchTab('student');
+                        showToast(`Chào mừng em! Đã tải bài tập: "${assignedPassage.title}"`);
+                    }
+                } catch(err) {
+                    console.error('Error parsing shared task from URL:', err);
+                }
+            }
+        }
+
+        function dismissSharedBanner() {
+            document.getElementById('shared-assignment-banner').classList.add('hidden');
+        }
+
+        function shareResultToTeacher() {
+            const p = getCurrentPassage();
+            const student = state.studentName || 'Học sinh';
+            const sClass = state.studentClass ? ` - Lớp: ${state.studentClass}` : '';
+            const acc = document.getElementById('score-percentage').textContent;
+            const wpm = document.getElementById('score-wpm').textContent;
+
+            let rank = 'Xuất sắc 🌟';
+            const scoreNum = parseInt(acc) || 0;
+            if (scoreNum < 70) rank = 'Khá 👍';
+            else if (scoreNum < 85) rank = 'Rất tốt ✨';
+
+            const summaryMessage = `🎓 BÁO CÁO KẾT QUẢ ĐỌC TIẾNG ANH\n👤 Học sinh: ${student}${sClass}\n📖 Bài đọc: ${p.title} (${p.level})\n🎯 Tỉ lệ đúng: ${acc}\n⚡ Tốc độ đọc: ${wpm} WPM\n🏆 Đánh giá: ${rank}\n✨ Ứng dụng: Reading Master`;
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(summaryMessage).then(() => {
+                    showToast('Đã sao chép kết quả bài đọc! Em hãy mở Zalo hoặc tin nhắn của Thầy/Cô và bấm Dán (Paste) để gửi nhé!');
+                }).catch(() => {
+                    prompt('Sao chép kết quả để gửi Thầy/Cô:', summaryMessage);
+                });
+            } else {
+                prompt('Sao chép kết quả để gửi Thầy/Cô:', summaryMessage);
+            }
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-message');
+            if (!toast || !toastMsg) return;
+
+            toastMsg.textContent = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none');
+            }, 5000);
+        }
+
+        /* ==========================================================================
+           6. SPEECH SYNTHESIS
+           ========================================================================== */
+        function initVoices() {
+            if (!('speechSynthesis' in window)) return;
+
+            function populateVoiceList() {
+                const voices = window.speechSynthesis.getVoices();
+                const voiceSelect = document.getElementById('voice-select');
+                if (!voiceSelect) return;
+
+                voiceSelect.innerHTML = '';
+                const enVoices = voices.filter(v => v.lang.startsWith('en'));
+
+                if (enVoices.length === 0) {
+                    const opt = document.createElement('option');
+                    opt.value = '';
+                    opt.textContent = 'Mặc định tiếng Anh';
+                    voiceSelect.appendChild(opt);
+                    return;
+                }
+
+                enVoices.forEach(voice => {
+                    const option = document.createElement('option');
+                    option.value = voice.name;
+                    option.textContent = `${voice.name} (${voice.lang})`;
+                    if (voice.name.includes('Natural') || voice.name.includes('Google') || voice.name.includes('Samantha') || voice.name.includes('Mark')) {
+                        option.selected = true;
+                        state.selectedVoice = voice;
+                    }
+                    voiceSelect.appendChild(option);
+                });
+
+                if (!state.selectedVoice && enVoices.length > 0) {
+                    state.selectedVoice = enVoices[0];
+                }
+
+                voiceSelect.addEventListener('change', (e) => {
+                    state.selectedVoice = voices.find(v => v.name === e.target.value);
+                });
+            }
+
+            populateVoiceList();
+            if (speechSynthesis.onvoiceschanged !== undefined) {
+                speechSynthesis.onvoiceschanged = populateVoiceList;
+            }
+        }
+
+        function setSpeedPreset(level) {
+            const btnA1 = document.getElementById('btn-speed-a1');
+            const btnB1 = document.getElementById('btn-speed-b1');
+            const btnC1 = document.getElementById('btn-speed-c1');
+
+            [btnA1, btnB1, btnC1].forEach(b => {
+                if (b) b.className = "speed-preset-btn px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 text-slate-400 hover:text-white";
+            });
+
+            if (level === 'A1-A2') {
+                state.currentSpeed = 0.8;
+                if (btnA1) btnA1.className = "speed-preset-btn px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 bg-brand-600 text-white shadow";
+            } else if (level === 'B1-B2') {
+                state.currentSpeed = 1.0;
+                if (btnB1) btnB1.className = "speed-preset-btn px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 bg-brand-600 text-white shadow";
+            } else if (level === 'C1') {
+                state.currentSpeed = 1.2;
+                if (btnC1) btnC1.className = "speed-preset-btn px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 bg-brand-600 text-white shadow";
+            }
+        }
+
+        function getCurrentPassage() {
+            return state.passages.find(p => p.id === state.currentPassageId) || state.passages[0];
+        }
+
+        function loadSelectedPassage() {
+            const select = document.getElementById('passage-select');
+            if (select) state.currentPassageId = select.value;
+
+            const p = getCurrentPassage();
+            if (!p) return;
+
+            document.getElementById('current-passage-title').textContent = p.title;
+            document.getElementById('current-passage-level-badge').textContent = `Trình độ: ${p.level}`;
+            document.getElementById('current-passage-topic-badge').textContent = `Chủ đề: ${p.topic || 'General'}`;
+
+            setSpeedPreset(p.level);
+
+            const noteBox = document.getElementById('teacher-note-box');
+            const noteText = document.getElementById('teacher-note-text');
+            if (p.notes && p.notes.trim()) {
+                noteText.textContent = p.notes;
+                noteBox.classList.remove('hidden');
+            } else {
+                noteBox.classList.add('hidden');
+            }
+
+            renderPassageTextDisplay(p.content);
+            document.getElementById('results-section').classList.add('hidden');
+        }
+
+        function renderPassageTextDisplay(text) {
+            const display = document.getElementById('passage-text-display');
+            display.innerHTML = '';
+
+            const words = text.split(/(\s+)/);
+            let wordIndex = 0;
+
+            words.forEach(token => {
+                if (token.trim().length === 0) {
+                    display.appendChild(document.createTextNode(token));
+                } else {
+                    const span = document.createElement('span');
+                    span.className = 'word-token';
+                    span.id = `word-token-${wordIndex}`;
+                    span.textContent = token;
+                    span.onclick = () => pronounceSingleWord(token);
+                    display.appendChild(span);
+                    wordIndex++;
+                }
+            });
+        }
+
+        function pronounceSingleWord(word) {
+            const clean = word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"'’]/g, "").trim();
+            if (!clean) return;
+
+            window.speechSynthesis.cancel();
+            const utter = new SpeechSynthesisUtterance(clean);
+            utter.lang = 'en-US';
+            utter.rate = state.currentSpeed;
+            if (state.selectedVoice) utter.voice = state.selectedVoice;
+
+            window.speechSynthesis.speak(utter);
+        }
+
+        function playSampleTTS() {
+            const passage = getCurrentPassage();
+            if (!passage) return;
+
+            window.speechSynthesis.cancel();
+
+            const utter = new SpeechSynthesisUtterance(passage.content);
+            utter.lang = 'en-US';
+            utter.rate = state.currentSpeed;
+            if (state.selectedVoice) utter.voice = state.selectedVoice;
+
+            let tokenIndex = 0;
+
+            utter.onboundary = (event) => {
+                if (event.name === 'word') {
+                    document.querySelectorAll('.word-token.speaking').forEach(el => el.classList.remove('speaking'));
+                    const tokenEl = document.getElementById(`word-token-${tokenIndex}`);
+                    if (tokenEl) {
+                        tokenEl.classList.add('speaking');
+                        tokenEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }
+                    tokenIndex++;
+                }
+            };
+
+            utter.onend = () => {
+                document.querySelectorAll('.word-token.speaking').forEach(el => el.classList.remove('speaking'));
+                document.getElementById('btn-play-sample').classList.remove('hidden');
+                document.getElementById('btn-pause-sample').classList.add('hidden');
+                document.getElementById('btn-stop-sample').classList.add('hidden');
+                state.isTTSPlaying = false;
+            };
+
+            document.getElementById('btn-play-sample').classList.add('hidden');
+            document.getElementById('btn-pause-sample').classList.remove('hidden');
+            document.getElementById('btn-stop-sample').classList.remove('hidden');
+
+            state.isTTSPlaying = true;
+            window.speechSynthesis.speak(utter);
+        }
+
+        function pauseSampleTTS() {
+            if (window.speechSynthesis.speaking) {
+                window.speechSynthesis.pause();
+                document.getElementById('btn-play-sample').classList.remove('hidden');
+                document.getElementById('btn-pause-sample').classList.add('hidden');
+            }
+        }
+
+        function stopSampleTTS() {
+            window.speechSynthesis.cancel();
+            document.querySelectorAll('.word-token.speaking').forEach(el => el.classList.remove('speaking'));
+            document.getElementById('btn-play-sample').classList.remove('hidden');
+            document.getElementById('btn-pause-sample').classList.add('hidden');
+            document.getElementById('btn-stop-sample').classList.add('hidden');
+            state.isTTSPlaying = false;
+        }
+
+        /* ==========================================================================
+           7. SPEECH RECOGNITION & RECORDING
+           ========================================================================== */
+        let recognitionInstance = null;
+        let mediaRecorderInstance = null;
+        let recordingStartTime = 0;
+
+        function toggleRecording() {
+            if (state.isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        }
+
+        async function startRecording() {
+            saveStudentProfile();
+            stopSampleTTS();
+
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            
+            if (!SpeechRecognition) {
+                alert('Trình duyệt của bạn không hỗ trợ Speech Recognition trực tiếp. Hãy chuyển sang Google Chrome hoặc Microsoft Edge, hoặc dùng tính năng nhập văn bản thủ công bên dưới!');
+                toggleFallbackModal();
+                return;
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                state.micStream = stream;
+
+                state.recordedAudioChunks = [];
+                mediaRecorderInstance = new MediaRecorder(stream);
+                mediaRecorderInstance.ondataavailable = (e) => {
+                    if (e.data.size > 0) state.recordedAudioChunks.push(e.data);
+                };
+                mediaRecorderInstance.onstop = () => {
+                    state.lastRecordedAudioBlob = new Blob(state.recordedAudioChunks, { type: 'audio/webm' });
+                    const audioUrl = URL.createObjectURL(state.lastRecordedAudioBlob);
+                    const playback = document.getElementById('student-audio-playback');
+                    if (playback) playback.src = audioUrl;
+                };
+                mediaRecorderInstance.start();
+
+                setupWaveformVisualizer(stream);
+
+                state.accumulatedTranscript = '';
+
+                recognitionInstance = new SpeechRecognition();
+                recognitionInstance.lang = 'en-US';
+                recognitionInstance.continuous = true;
+                recognitionInstance.interimResults = true;
+                recognitionInstance.maxAlternatives = 3;
+
+                const liveBox = document.getElementById('live-transcript-box');
+                const liveText = document.getElementById('live-transcript-text');
+                const liveWordCount = document.getElementById('live-word-count');
+                liveBox.classList.remove('hidden');
+                liveText.textContent = 'Đang chờ giọng đọc của bạn...';
+
+                recognitionInstance.onresult = (event) => {
+                    let finalTranscript = '';
+                    let interimTranscript = '';
+
+                    for (let i = 0; i < event.results.length; ++i) {
+                        if (event.results[i].isFinal) {
+                            finalTranscript += event.results[i][0].transcript + ' ';
+                        } else {
+                            interimTranscript += event.results[i][0].transcript;
+                        }
+                    }
+
+                    state.accumulatedTranscript = (finalTranscript + ' ' + interimTranscript).trim();
+
+                    if (liveText && state.accumulatedTranscript) {
+                        liveText.textContent = `"${state.accumulatedTranscript}"`;
+                        const wCount = countWords(state.accumulatedTranscript);
+                        if (liveWordCount) liveWordCount.textContent = `${wCount} từ`;
+                    }
+
+                    const statusText = document.getElementById('recording-status');
+                    statusText.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span><span>Đang ghi nhận giọng nói...</span>`;
+                };
+
+                recognitionInstance.onerror = (event) => {
+                    console.error('Speech recognition error:', event.error);
+                };
+
+                recognitionInstance.onend = () => {
+                    if (state.isRecording) {
+                        try { recognitionInstance.start(); } catch(e){}
+                    }
+                };
+
+                recognitionInstance.start();
+
+                state.isRecording = true;
+                recordingStartTime = Date.now();
+
+                const recordBtn = document.getElementById('btn-record');
+                recordBtn.classList.add('mic-recording');
+                document.getElementById('record-btn-text').textContent = 'Dừng đọc';
+                document.getElementById('recording-status').innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span><span>Đang nghe bạn đọc... Hãy đọc to và rõ ràng!</span>`;
+                document.getElementById('waveform-placeholder').classList.add('hidden');
+
+                playSynthesizedChime(600, 0.1);
+
+            } catch(err) {
+                console.error('Microphone access error:', err);
+                alert('Không thể kết nối Micro: ' + err.message + '. Vui lòng cấp quyền truy cập micro cho trang web.');
+            }
+        }
+
+        function stopRecording() {
+            if (!state.isRecording) return;
+
+            state.isRecording = false;
+            playSynthesizedChime(400, 0.1);
+
+            if (recognitionInstance) recognitionInstance.stop();
+            if (mediaRecorderInstance && mediaRecorderInstance.state !== 'inactive') mediaRecorderInstance.stop();
+            if (state.micStream) state.micStream.getTracks().forEach(track => track.stop());
+
+            const recordBtn = document.getElementById('btn-record');
+            recordBtn.classList.remove('mic-recording');
+            document.getElementById('record-btn-text').textContent = 'Bắt đầu đọc';
+            document.getElementById('recording-status').innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span><span>Đang phân tích bài đọc của bạn...</span>`;
+
+            setTimeout(() => {
+                evaluateReadingTranscript(state.accumulatedTranscript);
+            }, 600);
+        }
+
+        function setupWaveformVisualizer(stream) {
+            const canvas = document.getElementById('waveform-canvas');
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const analyser = audioCtx.createAnalyser();
+            const source = audioCtx.createMediaStreamSource(stream);
+
+            source.connect(analyser);
+            analyser.fftSize = 64;
+
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+
+            function draw() {
+                if (!state.isRecording) {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    return;
+                }
+
+                requestAnimationFrame(draw);
+                analyser.getByteFrequencyData(dataArray);
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                const barWidth = (canvas.width / bufferLength) * 2;
+                let barHeight;
+                let x = 0;
+
+                for (let i = 0; i < bufferLength; i++) {
+                    barHeight = (dataArray[i] / 255) * canvas.height;
+                    const gradient = ctx.createLinearGradient(0, canvas.height, 0, 0);
+                    gradient.addColorStop(0, '#4f46e5');
+                    gradient.addColorStop(1, '#22c55e');
+
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(x, canvas.height - barHeight, barWidth - 1, barHeight);
+                    x += barWidth;
+                }
+            }
+            draw();
+        }
+
+        /* ==========================================================================
+           8. ENCOURAGING AI SCORING & WORD ALIGNMENT ALGORITHM
+           ========================================================================== */
+        function normalizeWordStem(word) {
+            if (!word) return '';
+            let w = word.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"'’]/g, "").trim();
+
+            const contractions = {
+                "can't": "cannot", "don't": "do", "doesn't": "does", "didn't": "did",
+                "i'm": "i", "you're": "you", "he's": "he", "she's": "she", "it's": "it",
+                "we're": "we", "they're": "they", "won't": "will"
+            };
+            if (contractions[w]) w = contractions[w];
+
+            if (w.length > 4) {
+                if (w.endsWith('ing')) return w.slice(0, -3);
+                if (w.endsWith('ed')) return w.slice(0, -2);
+                if (w.endsWith('es')) return w.slice(0, -2);
+                if (w.endsWith('s')) return w.slice(0, -1);
+            }
+            return w;
+        }
+
+        function evaluateReadingTranscript(spokenTranscript) {
+            const passage = getCurrentPassage();
+            if (!passage) return;
+
+            const targetContent = passage.content;
+            const targetWords = targetContent.split(/\s+/).filter(w => w.length > 0);
+            
+            let cleanSpokenWords = spokenTranscript.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"'’]/g, "").split(/\s+/).filter(w => w.length > 0);
+
+            if (cleanSpokenWords.length === 0) {
+                cleanSpokenWords = targetWords.map(w => w.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"'’]/g, ""));
+            }
+
+            let greenThreshold = 0.50;
+            let yellowThreshold = 0.20;
+
+            if (state.scoringTolerance === 'standard') {
+                greenThreshold = 0.65;
+                yellowThreshold = 0.35;
+            } else if (state.scoringTolerance === 'strict') {
+                greenThreshold = 0.78;
+                yellowThreshold = 0.50;
+            }
+
+            let correctCount = 0;
+            let warningCount = 0;
+            let errorCount = 0;
+
+            const evaluatedTokens = [];
+            let spokenIdx = 0;
+
+            targetWords.forEach((originalTargetWord) => {
+                const cleanTarget = originalTargetWord.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"'’]/g, "");
+                const stemTarget = normalizeWordStem(originalTargetWord);
+                
+                let bestMatchScore = 0;
+                let bestMatchIdx = -1;
+
+                const lookaheadLimit = Math.min(cleanSpokenWords.length, spokenIdx + 8);
+
+                for (let j = spokenIdx; j < lookaheadLimit; j++) {
+                    const cleanSpoken = cleanSpokenWords[j];
+                    const stemSpoken = normalizeWordStem(cleanSpoken);
+
+                    let similarity = calculateStringSimilarity(cleanTarget, cleanSpoken);
+                    
+                    if (stemTarget.length >= 3 && stemTarget === stemSpoken) {
+                        similarity = Math.max(similarity, 0.9);
+                    }
+
+                    if (similarity > bestMatchScore) {
+                        bestMatchScore = similarity;
+                        bestMatchIdx = j;
+                    }
+                }
+
+                let colorClass = 'word-error';
+
+                if (bestMatchScore >= greenThreshold) {
+                    colorClass = 'word-correct';
+                    correctCount++;
+                    spokenIdx = bestMatchIdx + 1;
+                } else if (bestMatchScore >= yellowThreshold) {
+                    colorClass = 'word-warning';
+                    warningCount++;
+                    spokenIdx = bestMatchIdx + 1;
+                } else {
+                    colorClass = 'word-error';
+                    errorCount++;
+                }
+
+                evaluatedTokens.push({
+                    word: originalTargetWord,
+                    colorClass: colorClass,
+                    matchScore: bestMatchScore,
+                    matchedSpoken: bestMatchIdx !== -1 ? cleanSpokenWords[bestMatchIdx] : ''
+                });
+            });
+
+            const totalWords = targetWords.length;
+            const scorePoints = (correctCount * 1.0) + (warningCount * 0.85);
+            let accuracyPercent = Math.min(100, Math.round((scorePoints / totalWords) * 100));
+
+            if (state.scoringTolerance === 'easy' && accuracyPercent > 35) {
+                accuracyPercent = Math.min(100, accuracyPercent + 12);
+            }
+
+            const durationSeconds = Math.max(5, (Date.now() - recordingStartTime) / 1000);
+            const wpm = Math.round((totalWords / durationSeconds) * 60);
+
+            renderEvaluationResults(evaluatedTokens, accuracyPercent, wpm, correctCount, warningCount, errorCount, passage);
+        }
+
+        function calculateStringSimilarity(str1, str2) {
+            if (!str1 || !str2) return 0;
+            if (str1 === str2) return 1.0;
+
+            const len1 = str1.length;
+            const len2 = str2.length;
+            const matrix = [];
+
+            for (let i = 0; i <= len1; i++) matrix[i] = [i];
+            for (let j = 0; j <= len2; j++) matrix[0][j] = j;
+
+            for (let i = 1; i <= len1; i++) {
+                for (let j = 1; j <= len2; j++) {
+                    const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+                    matrix[i][j] = Math.min(
+                        matrix[i - 1][j] + 1,
+                        matrix[i][j - 1] + 1,
+                        matrix[i - 1][j - 1] + cost
+                    );
+                }
+            }
+
+            const distance = matrix[len1][len2];
+            const maxLen = Math.max(len1, len2);
+            return 1 - (distance / maxLen);
+        }
+
+        /* ==========================================================================
+           9. RENDER RESULTS, PRAISE & CONFETTI CELEBRATION
+           ========================================================================== */
+        function renderEvaluationResults(tokens, accuracyPercent, wpm, correctCount, warningCount, errorCount, passage) {
+            const resultsSec = document.getElementById('results-section');
+            resultsSec.classList.remove('hidden');
+            resultsSec.scrollIntoView({ behavior: 'smooth' });
+
+            const studentTag = document.getElementById('results-student-tag');
+            if (studentTag) {
+                const nameStr = state.studentName || 'Học sinh';
+                const classStr = state.studentClass ? ` - Lớp: ${state.studentClass}` : '';
+                studentTag.textContent = `Học sinh: ${nameStr}${classStr}`;
+            }
+
+            animateNumber('score-percentage', accuracyPercent, '%');
+            document.getElementById('score-wpm').textContent = wpm;
+
+            document.getElementById('count-correct').textContent = `${correctCount} từ`;
+            document.getElementById('count-warning').textContent = `${warningCount} từ`;
+            document.getElementById('count-error').textContent = `${errorCount} từ`;
+
+            const container = document.getElementById('evaluated-text-container');
+            container.innerHTML = '';
+
+            tokens.forEach(tok => {
+                const span = document.createElement('span');
+                span.className = `word-token ${tok.colorClass}`;
+                span.textContent = tok.word;
+
+                span.onclick = () => {
+                    pronounceSingleWord(tok.word);
+                    alert(`Từ chuẩn: "${tok.word}"\nGiọng máy ghi nhận: "${tok.matchedSpoken || 'Bỏ sót'}"\nMức độ nhận diện: ${Math.round(tok.matchScore * 100)}%`);
+                };
+
+                container.appendChild(span);
+                container.appendChild(document.createTextNode(' '));
+            });
+
+            triggerPraiseAndCelebration(accuracyPercent, passage);
+            savePracticeAttempt(passage.title, passage.level, accuracyPercent, wpm);
+        }
+
+        function triggerPraiseAndCelebration(score, passage) {
+            const praiseCard = document.getElementById('praise-card');
+            const praiseAvatar = document.getElementById('praise-avatar');
+            const praiseTitle = document.getElementById('praise-title');
+            const praiseMessage = document.getElementById('praise-message');
+            const praiseStars = document.getElementById('praise-stars');
+
+            praiseStars.innerHTML = '';
+
+            let starCount = 1;
+            let title = '';
+            let msg = '';
+            let avatar = '🌟';
+            let bgStyle = 'bg-gradient-to-r from-indigo-900/60 to-slate-900 border-indigo-500/40';
+
+            const nameGreeting = state.studentName ? ` ${state.studentName}` : ' em';
+
+            if (score >= 80) {
+                starCount = 5;
+                avatar = '🏆';
+                title = `Xuất Sắc Cực Kỳ${nameGreeting}!`;
+                msg = `Chúc mừng${nameGreeting} đã đọc bài rất hay và phát âm chuẩn xác! Hãy tiếp tục rèn luyện phát huy phong độ tuyệt vời này nhé! 🌟✨`;
+                bgStyle = 'bg-gradient-to-r from-emerald-950/80 to-slate-900 border-emerald-500/50 shadow-emerald-500/20';
+
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+
+                playVictoryFanfare();
+
+            } else if (score >= 65) {
+                starCount = 4;
+                avatar = '👍';
+                title = `Cố Gắng Rất Tốt${nameGreeting}!`;
+                msg = `Giỏi lắm${nameGreeting}! Em đã đọc rất lưu loát. Hãy nhấp nghe lại các từ màu vàng để hoàn hảo hơn nữa nhé! 💪`;
+                bgStyle = 'bg-gradient-to-r from-indigo-950/80 to-slate-900 border-indigo-500/50';
+
+                playSynthesizedChime(800, 0.2);
+
+            } else if (score >= 45) {
+                starCount = 3;
+                avatar = '📖';
+                title = `Khá Lắm! Tiến Bộ Nhiều Rồi${nameGreeting}!`;
+                msg = `Bài đọc tốt lắm${nameGreeting}! Em chỉ cần nghe lại bài đọc mẫu và bấm ghi âm lại lần nữa để đạt điểm cao hơn nhé! 🚀`;
+                bgStyle = 'bg-gradient-to-r from-amber-950/60 to-slate-900 border-amber-500/40';
+
+                playSynthesizedChime(600, 0.2);
+
+            } else {
+                starCount = 2;
+                avatar = '💪';
+                title = `Tốt Lắm! Hãy Thử Lại Nào!`;
+                msg = `Đừng nản lòng nhé${nameGreeting}! Hãy nhấn nút Nghe Đọc Mẫu và bấm Micro để đọc lại nhé, thầy cô luôn tin tưởng em! 🔥`;
+                bgStyle = 'bg-gradient-to-r from-slate-900 to-slate-950 border-slate-700';
+
+                playSynthesizedChime(400, 0.2);
+            }
+
+            for (let i = 0; i < 5; i++) {
+                const star = document.createElement('i');
+                star.setAttribute('data-lucide', 'star');
+                star.className = i < starCount ? 'w-5 h-5 text-amber-400 fill-current' : 'w-5 h-5 text-slate-600';
+                praiseStars.appendChild(star);
+            }
+
+            praiseAvatar.textContent = avatar;
+            praiseTitle.textContent = title;
+            praiseMessage.textContent = msg;
+            praiseCard.className = `rounded-3xl p-6 border flex flex-col lg:flex-row items-center justify-between gap-6 transition-all ${bgStyle}`;
+
+            lucide.createIcons();
+        }
+
+        function animateNumber(elementId, targetNumber, suffix = '') {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+
+            let current = 0;
+            const increment = Math.ceil(targetNumber / 25);
+            const timer = setInterval(() => {
+                current += increment;
+                if (current >= targetNumber) {
+                    current = targetNumber;
+                    clearInterval(timer);
+                }
+                el.textContent = `${current}${suffix}`;
+            }, 30);
+        }
+
+        function resetPractice() {
+            document.getElementById('results-section').classList.add('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        /* ==========================================================================
+           10. SYNTHESIZED SOUND EFFECTS
+           ========================================================================== */
+        function playSynthesizedChime(freq = 600, duration = 0.15) {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, ctx.currentTime);
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + duration);
+            } catch(e){}
+        }
+
+        function playVictoryFanfare() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const notes = [523.25, 659.25, 783.99, 1046.50];
+
+                notes.forEach((freq, index) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+
+                    osc.type = 'triangle';
+                    osc.frequency.value = freq;
+                    const startTime = ctx.currentTime + (index * 0.12);
+                    gain.gain.setValueAtTime(0.3, startTime);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.3);
+
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(startTime);
+                    osc.stop(startTime + 0.3);
+                });
+            } catch(e){}
+        }
+
+        /* ==========================================================================
+           11. TEACHER CONTENT MANAGER & FILE IMPORTER
+           ========================================================================== */
+        function handleSavePassage(e) {
+            e.preventDefault();
+
+            const title = document.getElementById('input-title').value.trim();
+            const level = document.getElementById('input-level').value;
+            const content = document.getElementById('input-content').value.trim();
+            const notes = document.getElementById('input-notes').value.trim();
+
+            if (!title || !content) {
+                alert('Vui lòng điền đầy đủ tiêu đề và nội dung bài đọc!');
+                return;
+            }
+
+            const newPassage = {
+                id: 'p-' + Date.now(),
+                title: title,
+                level: level,
+                topic: 'Giáo Viên Giao',
+                speed: level === 'A1-A2' ? 0.8 : (level === 'B1-B2' ? 1.0 : 1.2),
+                notes: notes,
+                content: content
+            };
+
+            state.passages.unshift(newPassage);
+            state.currentPassageId = newPassage.id;
+
+            savePassagesToStorage();
+            resetTeacherForm();
+
+            showToast(`Đã lưu bài đọc "${title}" thành công! Thầy/cô có thể bấm nút "Lấy Link Giao Bài" để gửi cho học sinh.`);
+            switchTab('student');
+            loadSelectedPassage();
+        }
+
+        function resetTeacherForm() {
+            document.getElementById('teacher-form').reset();
+            document.getElementById('word-count-badge').textContent = '0 từ';
+            document.getElementById('file-upload-status').textContent = 'Đã sẵn sàng tải văn bản từ file...';
+        }
+
+        function renderTeacherPassageList() {
+            const container = document.getElementById('passages-list-container');
+            if (!container) return;
+
+            container.innerHTML = '';
+
+            state.passages.forEach(p => {
+                const card = document.createElement('div');
+                card.className = "bg-slate-900/90 border border-slate-800 rounded-2xl p-5 space-y-3 relative flex flex-col justify-between";
+
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                                ${p.level}
+                            </span>
+                            <span class="text-xs text-slate-500 font-medium">${countWords(p.content)} từ</span>
+                        </div>
+                        <h4 class="font-bold text-white text-base line-clamp-1">${p.title}</h4>
+                        <p class="text-xs text-slate-400 mt-1 line-clamp-2">${p.content}</p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-800/80">
+                        <div class="flex items-center space-x-2">
+                            <button onclick="selectPassageToPractice('${p.id}')" class="text-xs font-bold text-brand-400 hover:text-brand-300 flex items-center space-x-1">
+                                <i data-lucide="play-circle" class="w-4 h-4"></i>
+                                <span>Luyện Đọc</span>
+                            </button>
+                            <button onclick="sharePassageLink('${p.id}')" class="text-xs font-bold text-indigo-400 hover:text-indigo-300 flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-indigo-600/10 border border-indigo-500/20" title="Sao chép link giao bài này gửi học sinh">
+                                <i data-lucide="share-2" class="w-3.5 h-3.5"></i>
+                                <span>Giao Link (Zalo)</span>
+                            </button>
+                        </div>
+                        ${p.id.startsWith('p-') && !DEFAULT_PASSAGES.some(dp => dp.id === p.id) ? `
+                            <button onclick="deletePassage('${p.id}')" class="text-xs text-rose-400 hover:text-rose-300" title="Xóa bài đọc">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            lucide.createIcons();
+        }
+
+        function selectPassageToPractice(id) {
+            state.currentPassageId = id;
+            switchTab('student');
+            document.getElementById('passage-select').value = id;
+            loadSelectedPassage();
+        }
+
+        function deletePassage(id) {
+            if (confirm('Bạn có chắc chắn muốn xóa bài đọc này không?')) {
+                state.passages = state.passages.filter(p => p.id !== id);
+                if (state.currentPassageId === id) {
+                    state.currentPassageId = state.passages[0].id;
+                }
+                savePassagesToStorage();
+            }
+        }
+
+        /* File Drag & Drop + Parser */
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            document.getElementById('dropzone').classList.add('border-brand-500', 'bg-slate-900/80');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            document.getElementById('dropzone').classList.remove('border-brand-500', 'bg-slate-900/80');
+        }
+
+        function handleFileDrop(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const files = e.dataTransfer.files;
+            if (files.length > 0) processUploadedFile(files[0]);
+        }
+
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            if (files.length > 0) processUploadedFile(files[0]);
+        }
+
+        async function processUploadedFile(file) {
+            const statusLabel = document.getElementById('file-upload-status');
+            statusLabel.textContent = `Đang đọc file: ${file.name}...`;
+
+            const titleInput = document.getElementById('input-title');
+            if (!titleInput.value) {
+                titleInput.value = file.name.replace(/\.[^/.]+$/, "");
+            }
+
+            const fileNameLower = file.name.toLowerCase();
+
+            try {
+                if (fileNameLower.endsWith('.txt') || fileNameLower.endsWith('.md')) {
+                    const text = await file.text();
+                    setTeacherPassageContent(text);
+                } else if (fileNameLower.endsWith('.docx')) {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+                    setTeacherPassageContent(result.value);
+                } else if (fileNameLower.endsWith('.pdf')) {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                    let fullText = '';
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const tokenized = await page.getTextContent();
+                        const pageText = tokenized.items.map(item => item.str).join(' ');
+                        fullText += pageText + '\n';
+                    }
+                    setTeacherPassageContent(fullText);
+                } else {
+                    alert('Định dạng file không hỗ trợ. Vui lòng tải file .txt, .docx hoặc .pdf!');
+                }
+                statusLabel.textContent = `Đã trích xuất thành công nội dung file ${file.name}!`;
+            } catch(err) {
+                console.error('File parsing error:', err);
+                statusLabel.textContent = `Lỗi đọc file: ${err.message}`;
+            }
+        }
+
+        function setTeacherPassageContent(text) {
+            const textarea = document.getElementById('input-content');
+            textarea.value = text.trim();
+            const words = text.trim().split(/\s+/).filter(w => w.length > 0);
+            document.getElementById('word-count-badge').textContent = `${words.length} từ`;
+        }
+
+        /* ==========================================================================
+           12. PROGRESS HISTORY & TEACHER REPORT DASHBOARD
+           ========================================================================== */
+        function savePracticeAttempt(passageTitle, level, accuracy, wpm) {
+            const attempt = {
+                id: 'att-' + Date.now(),
+                timestamp: new Date().toLocaleDateString('vi-VN') + ' ' + new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+                studentName: state.studentName || 'Học sinh chưa đặt tên',
+                studentClass: state.studentClass || 'Chưa xếp lớp',
+                title: passageTitle,
+                level: level,
+                accuracy: accuracy,
+                wpm: wpm
+            };
+
+            state.history.unshift(attempt);
+            state.streak += 1;
+            saveHistoryToStorage();
+        }
+
+        function updateProgressStats() {
+            const totalSessions = state.history.length;
+            document.getElementById('stat-total-sessions').textContent = totalSessions;
+
+            const avgAcc = totalSessions > 0 
+                ? Math.round(state.history.reduce((acc, curr) => acc + curr.accuracy, 0) / totalSessions)
+                : 0;
+            document.getElementById('stat-avg-accuracy').textContent = `${avgAcc}%`;
+            document.getElementById('stat-streak').textContent = `${state.streak} ngày`;
+
+            const uniqueStudents = new Set(state.history.map(h => h.studentName)).size;
+            document.getElementById('stat-total-students').textContent = uniqueStudents;
+
+            calculateBadges();
+            renderHistoryTable();
+        }
+
+        function calculateBadges() {
+            const container = document.getElementById('badges-container');
+            if (!container) return 0;
+
+            const badges = [
+                { id: 'b1', title: 'Lần Đọc Đầu Tiên', desc: 'Hoàn thành bài đọc đầu tiên', icon: 'star', unlocked: state.history.length >= 1 },
+                { id: 'b2', title: 'Bậc Thầy 100%', desc: 'Đạt điểm chính xác tuyệt đối 100%', icon: 'award', unlocked: state.history.some(h => h.accuracy === 100) },
+                { id: 'b3', title: 'Chăm Chỉ Luyện Đọc', desc: 'Hoàn thành trên 5 lượt luyện đọc', icon: 'flame', unlocked: state.history.length >= 5 },
+                { id: 'b4', title: 'Tốc Độ Đọc Cao', desc: 'Đạt tốc độ đọc trên 100 WPM', icon: 'zap', unlocked: state.history.some(h => h.wpm >= 100) },
+                { id: 'b5', title: 'Super Reader', desc: 'Đạt điểm trung bình trên 85%', icon: 'crown', unlocked: state.history.length >= 2 && (state.history.reduce((acc, curr) => acc + curr.accuracy, 0) / state.history.length) >= 85 }
+            ];
+
+            container.innerHTML = '';
+            let unlockedCount = 0;
+
+            badges.forEach(b => {
+                if (b.unlocked) unlockedCount++;
+                const card = document.createElement('div');
+                card.className = `p-3 rounded-2xl border flex items-center space-x-3 ${b.unlocked ? 'bg-indigo-500/10 border-indigo-500/30 text-white' : 'bg-slate-900/50 border-slate-800 text-slate-500 opacity-60'}`;
+
+                card.innerHTML = `
+                    <div class="w-10 h-10 rounded-xl ${b.unlocked ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-600'} flex items-center justify-center shrink-0">
+                        <i data-lucide="${b.icon}" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h5 class="text-xs font-bold">${b.title}</h5>
+                        <p class="text-[11px] text-slate-400 mt-0.5">${b.desc}</p>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            lucide.createIcons();
+            return unlockedCount;
+        }
+
+        function renderHistoryTable() {
+            const tbody = document.getElementById('history-table-body');
+            if (!tbody) return;
+
+            tbody.innerHTML = '';
+
+            const nameFilter = (document.getElementById('filter-name')?.value || '').toLowerCase().trim();
+            const classFilter = (document.getElementById('filter-class')?.value || '').toLowerCase().trim();
+            const levelFilter = (document.getElementById('filter-level')?.value || '').trim();
+
+            const filtered = state.history.filter(h => {
+                const matchName = !nameFilter || (h.studentName || '').toLowerCase().includes(nameFilter);
+                const matchClass = !classFilter || (h.studentClass || '').toLowerCase().includes(classFilter);
+                const matchLevel = !levelFilter || h.level === levelFilter;
+                return matchName && matchClass && matchLevel;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="py-6 text-center text-slate-500 text-xs">Không tìm thấy dữ liệu kết quả nào khớp với bộ lọc.</td></tr>`;
+                return;
+            }
+
+            filtered.forEach(h => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-900/50 transition-colors";
+
+                let badgeColor = 'bg-slate-800 text-slate-300';
+                if (h.accuracy >= 85) badgeColor = 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+                else if (h.accuracy >= 70) badgeColor = 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30';
+                else badgeColor = 'bg-amber-500/20 text-amber-400 border border-amber-500/30';
+
+                tr.innerHTML = `
+                    <td class="py-3.5 px-4 text-xs text-slate-400">${h.timestamp}</td>
+                    <td class="py-3.5 px-4 font-bold text-white">${h.studentName || 'Học sinh'}</td>
+                    <td class="py-3.5 px-4 text-xs font-semibold text-indigo-300">${h.studentClass || 'N/A'}</td>
+                    <td class="py-3.5 px-4 font-bold text-slate-200">${h.title}</td>
+                    <td class="py-3.5 px-4 text-xs">${h.level}</td>
+                    <td class="py-3.5 px-4 font-bold text-emerald-400">${h.accuracy}%</td>
+                    <td class="py-3.5 px-4 text-xs text-slate-300">${h.wpm} WPM</td>
+                    <td class="py-3.5 px-4"><span class="px-2.5 py-1 rounded-full text-xs font-bold ${badgeColor}">${h.accuracy >= 85 ? 'Xuất sắc' : (h.accuracy >= 70 ? 'Rất tốt' : 'Khá')}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        let progressChartInstance = null;
+
+        function renderProgressChart() {
+            const canvas = document.getElementById('progress-chart');
+            if (!canvas) return;
+
+            if (progressChartInstance) progressChartInstance.destroy();
+
+            const ctx = canvas.getContext('2d');
+            const historyReversed = [...state.history].reverse().slice(-10);
+
+            const labels = historyReversed.map((h, i) => `${h.studentName ? h.studentName.split(' ').pop() : 'Lần ' + (i+1)}`);
+            const dataScores = historyReversed.map(h => h.accuracy);
+
+            progressChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels.length > 0 ? labels : ['Chưa có dữ liệu'],
+                    datasets: [{
+                        label: 'Tỉ lệ đọc đúng (%)',
+                        data: dataScores.length > 0 ? dataScores : [0],
+                        borderColor: '#6366f1',
+                        backgroundColor: 'rgba(99, 102, 241, 0.15)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#22c55e',
+                        pointRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 100,
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function clearHistory() {
+            if (confirm('Bạn có chắc chắn muốn xóa toàn bộ lịch sử luyện đọc?')) {
+                state.history = [];
+                state.streak = 0;
+                saveHistoryToStorage();
+                renderProgressChart();
+            }
+        }
+
+        /* ==========================================================================
+           13. UTILITIES & THEME TOGGLE
+           ========================================================================== */
+        function countWords(str) {
+            if (!str) return 0;
+            return str.trim().split(/\s+/).filter(w => w.length > 0).length;
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const icon = document.getElementById('theme-icon');
+
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                html.classList.add('light');
+                icon.setAttribute('data-lucide', 'moon');
+            } else {
+                html.classList.remove('light');
+                html.classList.add('dark');
+                icon.setAttribute('data-lucide', 'sun');
+            }
+            lucide.createIcons();
+        }
+
+        function toggleFallbackModal() {
+            const modal = document.getElementById('fallback-modal');
+            if (modal) modal.classList.toggle('hidden');
+        }
+
+        function submitFallbackTranscript() {
+            const input = document.getElementById('fallback-transcript-input').value.trim();
+            if (!input) {
+                alert('Vui lòng nhập đoạn văn bản đọc!');
+                return;
+            }
+            toggleFallbackModal();
+            evaluateReadingTranscript(input);
+        }
+    </script>
+
+</body>
+</html>
