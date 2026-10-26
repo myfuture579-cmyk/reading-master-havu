@@ -62,6 +62,12 @@
 
     <!-- PDF.js for PDF file extraction -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+
+    <!-- Tesseract.js: đọc chữ từ ảnh ngay trên trình duyệt (miễn phí, không cần tài khoản) -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
@@ -350,9 +356,8 @@
                                 <span>Chế độ chấm điểm:</span>
                             </label>
                             <select id="scoring-tolerance-select" onchange="setScoringTolerance(this.value)" class="bg-slate-900/90 border border-emerald-500/50 text-emerald-300 rounded-2xl px-4 py-3.5 text-xs font-bold focus:ring-2 focus:ring-emerald-500 cursor-pointer">
-                                <option value="easy" selected>🌈 Dễ & Động viên (Nhiều từ xanh - Khuyên dùng)</option>
-                                <option value="standard">⚖️ Tiêu chuẩn (Vừa phải)</option>
-                                <option value="strict">🎯 Chính xác (Nâng cao)</option>
+                                <option value="standard" selected>⚖️ Tiêu chuẩn (Đúng từng từ, sai âm đuôi = vàng)</option>
+                                <option value="strict">🎯 Nghiêm ngặt (Sai âm đuôi = đỏ, đọc thừa bị trừ nặng)</option>
                             </select>
                         </div>
 
@@ -452,7 +457,7 @@
 
                     <!-- PASSAGE READING AREA (Interactive Tokens) -->
                     <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 min-h-[180px] leading-relaxed text-lg sm:text-xl font-medium tracking-wide">
-                        <div id="passage-text-display" class="leading-loose">
+                        <div id="passage-text-display" class="leading-loose whitespace-pre-line">
                             <!-- Populated with clickable word spans -->
                         </div>
                     </div>
@@ -511,13 +516,7 @@
                         </p>
                     </div>
 
-                    <!-- Manual Audio/Text Input Fallback for testing -->
-                    <div class="pt-4 border-t border-slate-800/80 max-w-xl mx-auto flex justify-center">
-                        <button onclick="toggleFallbackModal()" class="text-xs text-indigo-400 hover:text-indigo-300 underline font-medium flex items-center space-x-1">
-                            <i data-lucide="keyboard" class="w-3.5 h-3.5"></i>
-                            <span>Thử nghiệm bằng văn bản đọc thủ công nếu mic yếu</span>
-                        </button>
-                    </div>
+                    <p class="pt-4 border-t border-slate-800/80 max-w-xl mx-auto text-xs text-slate-500">Mẹo: dùng Google Chrome, ngồi nơi yên tĩnh, đọc to rõ từng từ để máy nhận diện chính xác.</p>
                 </div>
 
                 <!-- EVALUATION & SCORE RESULTS SECTION -->
@@ -662,7 +661,7 @@
                             <span>Tạo & Giao Bài Đọc Cho Học Sinh</span>
                         </h2>
                         <p class="text-sm text-slate-400 mt-1">
-                            Giáo viên có thể dán nội dung văn bản trực tiếp hoặc tải file bài đọc (.txt, .docx, .pdf). Sau khi lưu, thầy cô có thể bấm nút **"Lấy Link Giao Bài"** để gửi link trực tiếp qua nhóm Zalo của lớp!
+                            Thầy/cô có thể <strong>dán nội dung trực tiếp</strong>, hoặc <strong>gửi file PDF / ảnh chụp</strong> bài đọc. Bài có thể là đoạn văn hoặc danh sách từ riêng lẻ (mỗi từ một dòng). Sau khi lưu, bấm <strong>"Giao Link (Zalo)"</strong> để gửi cho lớp.
                         </p>
                     </div>
 
@@ -689,17 +688,17 @@
                         <!-- FILE UPLOAD DROPZONE -->
                         <div class="space-y-2">
                             <label class="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center justify-between">
-                                <span>Tải file bài đọc (Tùy chọn):</span>
-                                <span class="text-slate-500 text-[11px] uppercase font-normal">Hỗ trợ .TXT, .MD, .DOCX, .PDF</span>
+                                <span>Hoặc gửi file PDF / ảnh chụp bài đọc:</span>
+                                <span class="text-slate-500 text-[11px] uppercase font-normal">PDF, JPG, PNG (cả ảnh chụp sách)</span>
                             </label>
                             
                             <div id="dropzone" onclick="document.getElementById('file-input').click()" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleFileDrop(event)" class="border-2 border-dashed border-slate-700 hover:border-brand-500 rounded-2xl p-6 text-center cursor-pointer transition-all bg-slate-900/40 hover:bg-slate-900/80 group">
-                                <input type="file" id="file-input" accept=".txt,.md,.docx,.pdf" onchange="handleFileSelect(event)" class="hidden">
+                                <input type="file" id="file-input" accept=".pdf,image/*,.docx,.txt" onchange="handleFileSelect(event)" class="hidden">
                                 <div class="w-12 h-12 rounded-full bg-indigo-500/10 group-hover:bg-brand-500/20 text-indigo-400 group-hover:text-brand-400 flex items-center justify-center mx-auto mb-2 transition-all">
-                                    <i data-lucide="upload-cloud" class="w-6 h-6"></i>
+                                    <i data-lucide="image-up" class="w-6 h-6"></i>
                                 </div>
-                                <p class="text-sm font-semibold text-slate-300">Nhấp vào đây hoặc kéo thả file bài đọc vào đây</p>
-                                <p id="file-upload-status" class="text-xs text-slate-500 mt-1">Đã sẵn sàng tải văn bản từ file...</p>
+                                <p class="text-sm font-semibold text-slate-300">Bấm để chọn hoặc kéo thả file PDF / ảnh vào đây</p>
+                                <p id="file-upload-status" class="text-xs text-slate-500 mt-1">Máy sẽ tự lấy chữ trong file và điền vào ô nội dung bên dưới để thầy/cô kiểm tra.</p>
                             </div>
                         </div>
 
@@ -1007,7 +1006,7 @@
             passages: [],
             currentPassageId: 'p-1',
             currentSpeed: 0.8,
-            scoringTolerance: 'easy',
+            scoringTolerance: 'standard',
             selectedVoice: null,
             isTTSPlaying: false,
             isRecording: false,
@@ -1256,8 +1255,9 @@
 
             let rank = 'Xuất sắc 🌟';
             const scoreNum = parseInt(acc) || 0;
-            if (scoreNum < 70) rank = 'Khá 👍';
-            else if (scoreNum < 85) rank = 'Rất tốt ✨';
+            if (scoreNum < 70) rank = 'Cần cố gắng thêm 💪';
+            else if (scoreNum < 85) rank = 'Khá 👍';
+            else if (scoreNum < 95) rank = 'Rất tốt ✨';
 
             const summaryMessage = `🎓 BÁO CÁO KẾT QUẢ ĐỌC TIẾNG ANH\n👤 Học sinh: ${student}${sClass}\n📖 Bài đọc: ${p.title} (${p.level})\n🎯 Tỉ lệ đúng: ${acc}\n⚡ Tốc độ đọc: ${wpm} WPM\n🏆 Đánh giá: ${rank}\n✨ Ứng dụng: Reading Master`;
 
@@ -1501,8 +1501,7 @@
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             
             if (!SpeechRecognition) {
-                alert('Trình duyệt của bạn không hỗ trợ Speech Recognition trực tiếp. Hãy chuyển sang Google Chrome hoặc Microsoft Edge, hoặc dùng tính năng nhập văn bản thủ công bên dưới!');
-                toggleFallbackModal();
+                alert('Trình duyệt này không hỗ trợ nhận diện giọng nói. Em hãy mở link bằng Google Chrome (máy tính / Android) hoặc Safari mới nhất (iPhone) nhé!');
                 return;
             }
 
@@ -1526,12 +1525,14 @@
                 setupWaveformVisualizer(stream);
 
                 state.accumulatedTranscript = '';
+                state.committedWords = [];
+                state.spokenWords = [];
 
                 recognitionInstance = new SpeechRecognition();
                 recognitionInstance.lang = 'en-US';
                 recognitionInstance.continuous = true;
                 recognitionInstance.interimResults = true;
-                recognitionInstance.maxAlternatives = 3;
+                recognitionInstance.maxAlternatives = 1;
 
                 const liveBox = document.getElementById('live-transcript-box');
                 const liveText = document.getElementById('live-transcript-text');
@@ -1540,18 +1541,17 @@
                 liveText.textContent = 'Đang chờ giọng đọc của bạn...';
 
                 recognitionInstance.onresult = (event) => {
-                    let finalTranscript = '';
-                    let interimTranscript = '';
-
+                    // Chỉ dùng kết quả máy nghe được rõ nhất, KHÔNG chọn hộ cách nghe giống bài mẫu
+                    const sessionWords = [];
                     for (let i = 0; i < event.results.length; ++i) {
-                        if (event.results[i].isFinal) {
-                            finalTranscript += event.results[i][0].transcript + ' ';
-                        } else {
-                            interimTranscript += event.results[i][0].transcript;
-                        }
+                        const r = event.results[i];
+                        const conf = r.isFinal ? r[0].confidence : null;
+                        r[0].transcript.split(/\s+/).filter(Boolean).forEach(w => sessionWords.push({ w, c: conf }));
                     }
 
-                    state.accumulatedTranscript = (finalTranscript + ' ' + interimTranscript).trim();
+                    // Giữ lại phần đã nghe ở các lượt trước (khi học sinh dừng giữa các từ, máy tự khởi động lại)
+                    state.spokenWords = state.committedWords.concat(sessionWords);
+                    state.accumulatedTranscript = state.spokenWords.map(o => o.w).join(' ');
 
                     if (liveText && state.accumulatedTranscript) {
                         liveText.textContent = `"${state.accumulatedTranscript}"`;
@@ -1568,6 +1568,7 @@
                 };
 
                 recognitionInstance.onend = () => {
+                    state.committedWords = state.spokenWords.slice();
                     if (state.isRecording) {
                         try { recognitionInstance.start(); } catch(e){}
                     }
@@ -1679,6 +1680,43 @@
             return w;
         }
 
+        // ===== Từ đồng âm & chữ số: đưa về 1 dạng chung để khớp đúng cách viết của tác giả =====
+        const HOMOPHONE_GROUPS = [
+            ['to','two','too','2'], ['for','four','4'], ['ate','eight','8'], ['one','won','1'],
+            ['son','sun'], ['see','sea'], ['be','bee'], ['by','buy','bye'], ['there','their','theyre'],
+            ['here','hear'], ['right','write'], ['no','know'], ['new','knew'], ['hour','our'],
+            ['meet','meat'], ['week','weak'], ['flower','flour'], ['blue','blew'], ['road','rode'],
+            ['wear','where'], ['pair','pear'], ['tail','tale'], ['mail','male'], ['sail','sale'],
+            ['peace','piece'], ['plane','plain'], ['whole','hole'], ['wood','would'], ['your','youre'],
+            ['weather','whether'], ['which','witch'], ['dear','deer'], ['knight','night'], ['knows','nose'],
+            ['bear','bare'], ['cell','sell'], ['i','eye'], ['ok','okay'], ['its','it\'s'], ['whose','whos'],
+            ['allowed','aloud'], ['break','brake'], ['fair','fare'], ['hair','hare'], ['made','maid'],
+            ['not','knot'], ['so','sew'], ['steal','steel'], ['threw','through'],
+            ['waist','waste'], ['wait','weight'], ['way','weigh'], ['grate','great'], ['heel','heal'],
+            ['mr','mister'], ['mrs','missus'], ['dr','doctor'], ['tv','television'],
+            ['zero','0'], ['three','3'], ['five','5'], ['six','6'], ['seven','7'], ['nine','9'],
+            ['ten','10'], ['eleven','11'], ['twelve','12'], ['thirteen','13'], ['fourteen','14'],
+            ['fifteen','15'], ['sixteen','16'], ['seventeen','17'], ['eighteen','18'], ['nineteen','19'],
+            ['twenty','20'], ['thirty','30'], ['forty','40'], ['fifty','50'], ['sixty','60'],
+            ['seventy','70'], ['eighty','80'], ['ninety','90'], ['hundred','100'], ['thousand','1000'],
+            ['first','1st'], ['second','2nd'], ['third','3rd'], ['fourth','4th'], ['fifth','5th']
+        ];
+        const HOMOPHONE_MAP = (() => {
+            const map = {};
+            HOMOPHONE_GROUPS.forEach(g => {
+                const key = g[0].replace(/'/g, '');
+                g.forEach(w => { map[w.replace(/'/g, '')] = key; });
+            });
+            return map;
+        })();
+        function cleanWord(w) {
+            return (w || '').toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"'’“”!]/g, "").trim();
+        }
+        function canonWord(w) {
+            const c = cleanWord(w);
+            return HOMOPHONE_MAP[c] || c;
+        }
+
         function evaluateReadingTranscript(spokenTranscript) {
             const passage = getCurrentPassage();
             if (!passage) return;
@@ -1686,85 +1724,96 @@
             const targetContent = passage.content;
             const targetWords = targetContent.split(/\s+/).filter(w => w.length > 0);
             
-            let cleanSpokenWords = spokenTranscript.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"'’]/g, "").split(/\s+/).filter(w => w.length > 0);
+            const clean = (w) => w.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"'’“”!]/g, "").trim();
+            // Lấy từng từ kèm độ tin cậy của máy (nếu có)
+            const rawSpoken = (state.spokenWords && state.spokenWords.length)
+                ? state.spokenWords
+                : (spokenTranscript || '').split(/\s+/).map(w => ({ w, c: null }));
+            const spokenItems = rawSpoken.map(o => ({ w: clean(o.w), c: o.c })).filter(o => o.w.length > 0);
+            const cleanSpokenWords = spokenItems.map(o => o.w);
 
+            // KHÔNG nghe được gì -> không chấm, không lưu điểm
             if (cleanSpokenWords.length === 0) {
-                cleanSpokenWords = targetWords.map(w => w.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"'’]/g, ""));
+                document.getElementById('recording-status').innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span><span>Máy chưa nghe thấy em đọc. Hãy kiểm tra micro, đọc to rõ hơn và thử lại nhé!</span>`;
+                showToast('Không nhận được giọng đọc nào - bài chưa được chấm. Em hãy bấm Micro và đọc lại nhé!');
+                return;
             }
 
-            let greenThreshold = 0.50;
-            let yellowThreshold = 0.20;
+            // CHẶT CHẼ: xanh chỉ khi đọc ĐÚNG từ (hoặc từ đồng âm cùng cách đọc)
+            const strict = state.scoringTolerance === 'strict';
+            const greenThreshold = 1.0;
+            const yellowThreshold = strict ? 0.9 : 0.8;   // gần đúng (sai 1 chút) -> vàng; còn lại -> đỏ
+            const minConfidence = strict ? 0.75 : 0.6;    // máy nghe không chắc -> không cho xanh
+            const extraWordPenalty = strict ? 0.5 : 0.25; // đọc thừa / lặp / ậm ừ bị trừ điểm
 
-            if (state.scoringTolerance === 'standard') {
-                greenThreshold = 0.65;
-                yellowThreshold = 0.35;
-            } else if (state.scoringTolerance === 'strict') {
-                greenThreshold = 0.78;
-                yellowThreshold = 0.50;
+            const cleanTargets = targetWords.map(clean);
+
+            // Độ giống nhau giữa 1 từ mẫu và 1 từ học sinh đọc
+            const wordSim = (t, s) => {
+                if (!t || !s) return 0;
+                if (t === s) return 1;
+                // Từ đồng âm / chữ số (two-to-2, four-for, ten-10...) -> đúng chữ tác giả viết
+                if (canonWord(t) === canonWord(s)) return 1;
+                // Từ ngắn (a, an, the, is, in...) phải đọc đúng hoàn toàn
+                if (t.length <= 3) return 0;
+                let sim = calculateStringSimilarity(t, s);
+                // Thiếu/sai âm đuôi -s, -ed, -ing: Tiêu chuẩn = vàng, Nghiêm ngặt = đỏ
+                if (normalizeWordStem(t) === normalizeWordStem(s)) sim = 0.85;
+                // Không bao giờ cho xanh nếu chữ khác
+                return Math.min(sim, 0.95);
+            };
+
+            // Căn chỉnh chuỗi từ (Needleman-Wunsch): từ bỏ sót -> đỏ, từ đọc thêm bị phạt
+            const n = cleanTargets.length, m = cleanSpokenWords.length;
+            const GAP = -0.4;
+            const dp = Array.from({ length: n + 1 }, () => new Float32Array(m + 1));
+            const bt = Array.from({ length: n + 1 }, () => new Uint8Array(m + 1)); // 1=match,2=skip target,3=skip spoken
+            for (let i = 1; i <= n; i++) { dp[i][0] = i * GAP; bt[i][0] = 2; }
+            for (let j = 1; j <= m; j++) { dp[0][j] = j * GAP; bt[0][j] = 3; }
+            for (let i = 1; i <= n; i++) {
+                for (let j = 1; j <= m; j++) {
+                    const s = wordSim(cleanTargets[i - 1], cleanSpokenWords[j - 1]);
+                    const diag = dp[i - 1][j - 1] + (s >= yellowThreshold ? s : -0.5);
+                    const up = dp[i - 1][j] + GAP;
+                    const left = dp[i][j - 1] + GAP;
+                    if (diag >= up && diag >= left) { dp[i][j] = diag; bt[i][j] = 1; }
+                    else if (up >= left) { dp[i][j] = up; bt[i][j] = 2; }
+                    else { dp[i][j] = left; bt[i][j] = 3; }
+                }
+            }
+            const matchFor = new Array(n).fill(-1);
+            let ii = n, jj = m;
+            while (ii > 0 || jj > 0) {
+                const b = bt[ii][jj];
+                if (b === 1) { matchFor[ii - 1] = jj - 1; ii--; jj--; }
+                else if (b === 2) { ii--; }
+                else { jj--; }
             }
 
-            let correctCount = 0;
-            let warningCount = 0;
-            let errorCount = 0;
-
-            const evaluatedTokens = [];
-            let spokenIdx = 0;
-
-            targetWords.forEach((originalTargetWord) => {
-                const cleanTarget = originalTargetWord.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"'’]/g, "");
-                const stemTarget = normalizeWordStem(originalTargetWord);
-                
-                let bestMatchScore = 0;
-                let bestMatchIdx = -1;
-
-                const lookaheadLimit = Math.min(cleanSpokenWords.length, spokenIdx + 8);
-
-                for (let j = spokenIdx; j < lookaheadLimit; j++) {
-                    const cleanSpoken = cleanSpokenWords[j];
-                    const stemSpoken = normalizeWordStem(cleanSpoken);
-
-                    let similarity = calculateStringSimilarity(cleanTarget, cleanSpoken);
-                    
-                    if (stemTarget.length >= 3 && stemTarget === stemSpoken) {
-                        similarity = Math.max(similarity, 0.9);
-                    }
-
-                    if (similarity > bestMatchScore) {
-                        bestMatchScore = similarity;
-                        bestMatchIdx = j;
-                    }
+            let correctCount = 0, warningCount = 0, errorCount = 0;
+            const usedSpoken = new Set();
+            const evaluatedTokens = targetWords.map((orig, i) => {
+                const j = matchFor[i];
+                const spoken = j >= 0 ? cleanSpokenWords[j] : '';
+                let score = j >= 0 ? wordSim(cleanTargets[i], spoken) : 0;
+                if (j >= 0 && score >= yellowThreshold) usedSpoken.add(j);
+                // Máy nghe không rõ (độ tin cậy thấp) -> tối đa vàng
+                const conf = j >= 0 ? spokenItems[j].c : null;
+                if (score >= greenThreshold && typeof conf === 'number' && conf > 0 && conf < minConfidence) {
+                    score = Math.max(yellowThreshold, 0.9);
                 }
-
-                let colorClass = 'word-error';
-
-                if (bestMatchScore >= greenThreshold) {
-                    colorClass = 'word-correct';
-                    correctCount++;
-                    spokenIdx = bestMatchIdx + 1;
-                } else if (bestMatchScore >= yellowThreshold) {
-                    colorClass = 'word-warning';
-                    warningCount++;
-                    spokenIdx = bestMatchIdx + 1;
-                } else {
-                    colorClass = 'word-error';
-                    errorCount++;
-                }
-
-                evaluatedTokens.push({
-                    word: originalTargetWord,
-                    colorClass: colorClass,
-                    matchScore: bestMatchScore,
-                    matchedSpoken: bestMatchIdx !== -1 ? cleanSpokenWords[bestMatchIdx] : ''
-                });
+                let colorClass;
+                if (score >= greenThreshold) { colorClass = 'word-correct'; correctCount++; }
+                else if (score >= yellowThreshold) { colorClass = 'word-warning'; warningCount++; }
+                else { colorClass = 'word-error'; errorCount++; }
+                return { word: orig, colorClass, matchScore: score, matchedSpoken: spoken };
             });
 
             const totalWords = targetWords.length;
-            const scorePoints = (correctCount * 1.0) + (warningCount * 0.85);
-            let accuracyPercent = Math.min(100, Math.round((scorePoints / totalWords) * 100));
-
-            if (state.scoringTolerance === 'easy' && accuracyPercent > 35) {
-                accuracyPercent = Math.min(100, accuracyPercent + 12);
-            }
+            const extraWords = Math.max(0, m - usedSpoken.size);
+            // Từ vàng = nửa điểm; đọc thừa/lặp bị trừ; không có điểm cộng
+            const rawPoints = correctCount + warningCount * 0.5 - extraWords * extraWordPenalty;
+            const accuracyPercent = Math.max(0, Math.min(100, Math.round((rawPoints / totalWords) * 100)));
 
             const durationSeconds = Math.max(5, (Date.now() - recordingStartTime) / 1000);
             const wpm = Math.round((totalWords / durationSeconds) * 60);
@@ -1859,7 +1908,7 @@
 
             const nameGreeting = state.studentName ? ` ${state.studentName}` : ' em';
 
-            if (score >= 80) {
+            if (score >= 95) {
                 starCount = 5;
                 avatar = '🏆';
                 title = `Xuất Sắc Cực Kỳ${nameGreeting}!`;
@@ -1874,7 +1923,7 @@
 
                 playVictoryFanfare();
 
-            } else if (score >= 65) {
+            } else if (score >= 85) {
                 starCount = 4;
                 avatar = '👍';
                 title = `Cố Gắng Rất Tốt${nameGreeting}!`;
@@ -1883,7 +1932,7 @@
 
                 playSynthesizedChime(800, 0.2);
 
-            } else if (score >= 45) {
+            } else if (score >= 70) {
                 starCount = 3;
                 avatar = '📖';
                 title = `Khá Lắm! Tiến Bộ Nhiều Rồi${nameGreeting}!`;
@@ -2113,6 +2162,27 @@
             if (files.length > 0) processUploadedFile(files[0]);
         }
 
+        async function ocrImageSource(source, label) {
+            const statusLabel = document.getElementById('file-upload-status');
+            if (typeof Tesseract === 'undefined') throw new Error('Chưa tải được bộ đọc chữ từ ảnh. Kiểm tra kết nối mạng và thử lại.');
+            const result = await Tesseract.recognize(source, 'eng', {
+                logger: m => {
+                    if (m.status === 'recognizing text') {
+                        statusLabel.textContent = `Đang đọc chữ trong ${label}... ${Math.round(m.progress * 100)}%`;
+                    }
+                }
+            });
+            return result.data.text || '';
+        }
+
+        function tidyOcrText(text) {
+            return text
+                .replace(/[|]/g, 'I')
+                .replace(/[ \t]+/g, ' ')
+                .replace(/\n{3,}/g, '\n\n')
+                .trim();
+        }
+
         async function processUploadedFile(file) {
             const statusLabel = document.getElementById('file-upload-status');
             statusLabel.textContent = `Đang đọc file: ${file.name}...`;
@@ -2123,15 +2193,14 @@
             }
 
             const fileNameLower = file.name.toLowerCase();
+            const isImage = (file.type && file.type.startsWith('image/')) || /\.(jpe?g|png|webp|bmp|gif|heic)$/.test(fileNameLower);
+            let usedOcr = false;
 
             try {
-                if (fileNameLower.endsWith('.txt') || fileNameLower.endsWith('.md')) {
-                    const text = await file.text();
-                    setTeacherPassageContent(text);
-                } else if (fileNameLower.endsWith('.docx')) {
-                    const arrayBuffer = await file.arrayBuffer();
-                    const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
-                    setTeacherPassageContent(result.value);
+                if (isImage) {
+                    usedOcr = true;
+                    const text = await ocrImageSource(file, 'ảnh');
+                    setTeacherPassageContent(tidyOcrText(text));
                 } else if (fileNameLower.endsWith('.pdf')) {
                     const arrayBuffer = await file.arrayBuffer();
                     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -2139,14 +2208,46 @@
                     for (let i = 1; i <= pdf.numPages; i++) {
                         const page = await pdf.getPage(i);
                         const tokenized = await page.getTextContent();
-                        const pageText = tokenized.items.map(item => item.str).join(' ');
+                        let lastY = null, pageText = '';
+                        tokenized.items.forEach(item => {
+                            const y = item.transform ? item.transform[5] : null;
+                            if (lastY !== null && y !== null && Math.abs(y - lastY) > 5) pageText += '\n';
+                            else if (pageText && !pageText.endsWith(' ')) pageText += ' ';
+                            pageText += item.str;
+                            lastY = y;
+                        });
                         fullText += pageText + '\n';
                     }
+
+                    // PDF scan (chỉ có ảnh, không có chữ) -> đọc chữ từ ảnh từng trang
+                    if (fullText.replace(/\s/g, '').length < 20) {
+                        usedOcr = true;
+                        fullText = '';
+                        for (let i = 1; i <= pdf.numPages; i++) {
+                            const page = await pdf.getPage(i);
+                            const viewport = page.getViewport({ scale: 2 });
+                            const canvas = document.createElement('canvas');
+                            canvas.width = viewport.width;
+                            canvas.height = viewport.height;
+                            await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+                            fullText += await ocrImageSource(canvas, `trang ${i}/${pdf.numPages}`) + '\n';
+                        }
+                        fullText = tidyOcrText(fullText);
+                    }
                     setTeacherPassageContent(fullText);
+                } else if (fileNameLower.endsWith('.docx')) {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+                    setTeacherPassageContent(result.value);
+                } else if (fileNameLower.endsWith('.txt') || fileNameLower.endsWith('.md')) {
+                    setTeacherPassageContent(await file.text());
                 } else {
-                    alert('Định dạng file không hỗ trợ. Vui lòng tải file .txt, .docx hoặc .pdf!');
+                    statusLabel.textContent = 'Định dạng chưa hỗ trợ. Hãy gửi file PDF hoặc ảnh (JPG, PNG).';
+                    return;
                 }
-                statusLabel.textContent = `Đã trích xuất thành công nội dung file ${file.name}!`;
+                statusLabel.textContent = usedOcr
+                    ? `Đã đọc chữ từ ${file.name}. Thầy/cô hãy KIỂM TRA LẠI nội dung bên dưới (máy đọc ảnh có thể sai vài chữ) trước khi lưu.`
+                    : `Đã lấy nội dung từ ${file.name}. Thầy/cô kiểm tra lại trước khi lưu nhé.`;
             } catch(err) {
                 console.error('File parsing error:', err);
                 statusLabel.textContent = `Lỗi đọc file: ${err.message}`;
@@ -2260,9 +2361,10 @@
                 tr.className = "hover:bg-slate-900/50 transition-colors";
 
                 let badgeColor = 'bg-slate-800 text-slate-300';
-                if (h.accuracy >= 85) badgeColor = 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
-                else if (h.accuracy >= 70) badgeColor = 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30';
-                else badgeColor = 'bg-amber-500/20 text-amber-400 border border-amber-500/30';
+                if (h.accuracy >= 95) badgeColor = 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+                else if (h.accuracy >= 85) badgeColor = 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30';
+                else if (h.accuracy >= 70) badgeColor = 'bg-amber-500/20 text-amber-400 border border-amber-500/30';
+                else badgeColor = 'bg-rose-500/20 text-rose-400 border border-rose-500/30';
 
                 tr.innerHTML = `
                     <td class="py-3.5 px-4 text-xs text-slate-400">${h.timestamp}</td>
@@ -2272,7 +2374,7 @@
                     <td class="py-3.5 px-4 text-xs">${h.level}</td>
                     <td class="py-3.5 px-4 font-bold text-emerald-400">${h.accuracy}%</td>
                     <td class="py-3.5 px-4 text-xs text-slate-300">${h.wpm} WPM</td>
-                    <td class="py-3.5 px-4"><span class="px-2.5 py-1 rounded-full text-xs font-bold ${badgeColor}">${h.accuracy >= 85 ? 'Xuất sắc' : (h.accuracy >= 70 ? 'Rất tốt' : 'Khá')}</span></td>
+                    <td class="py-3.5 px-4"><span class="px-2.5 py-1 rounded-full text-xs font-bold ${badgeColor}">${h.accuracy >= 95 ? 'Xuất sắc' : (h.accuracy >= 85 ? 'Rất tốt' : (h.accuracy >= 70 ? 'Khá' : 'Cần cố gắng'))}</span></td>
                 `;
                 tbody.appendChild(tr);
             });
